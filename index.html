@@ -334,7 +334,7 @@
       <li><b>Say the notes out loud.</b> Notes mode until you can name every dot, then Intervals mode and name the R–3–5 instead. When both are boring, the neck is yours.</li>
     </ol>
     <p><b>On your phone:</b> open this page in <b>Chrome or Safari itself</b> (not inside another app's built-in browser — copy the link and paste it into the address bar). On Android, tap the <b>📲 Install</b> button that appears in the top bar, or <b>⋮ → Add to Home screen → Install</b>. On iPhone: <b>Share → Add to Home Screen</b>. It gets its own icon, opens fullscreen like an app, works offline, and the screen stays awake during metronome and changes runs.</p>
-    <p><b>Honest footnotes:</b> impractical grips are omitted or flagged (full G-form barres, some C-form stretches). Spellings are practical guitar names (B♭, E♭, A♭, C♯, F♯). The metronome is scheduled on the audio hardware clock (sub-millisecond jitter) — keep the tab in the foreground on phones. Want drop-3 voicings, m7♭5, dim7, or a Drop-D tuning toggle? Say the word.</p>
+    <p><b>Honest footnotes:</b> impractical grips are omitted or flagged (full G-form barres, some C-form stretches). Spellings are practical guitar names (B♭, E♭, A♭, C♯, F♯ — dim7's double-flat 7 is written as 6). 9th/13th-family grips omit the 5th, as guitarists actually play them — the neck map still shows it. The metronome is scheduled on the audio hardware clock (sub-millisecond jitter) — keep the tab in the foreground on phones. Want drop-3 voicings, altered dominants (7♭5, 7♯5), or a Drop-D tuning toggle? Say the word.</p>
   </div>
 </footer>
 
@@ -387,6 +387,31 @@ const QUALS = [
     {f:'Am7 form', rs:5, o:[null,0,2,0,1,0]},
     {f:'Dm7 form', rs:4, o:[null,null,0,2,1,1]},
   ]},
+  {id:'9', word:'dominant 9th', suf:'9', iv:[0,2,4,10], ivF:[0,2,4,7,10], disp:[0,4,7,10,2], lbl:{2:'9'}, kind:'s', tpl:[
+    {f:'C9 form', rs:5, o:[null,0,-1,0,0,0]},
+    {f:'E9 form', rs:6, o:[0,2,0,1,0,2]},
+  ]},
+  {id:'maj9', word:'major 9th', suf:'maj9', iv:[0,2,4,11], ivF:[0,2,4,7,11], disp:[0,4,7,11,2], lbl:{2:'9'}, kind:'s', tpl:[
+    {f:'Cmaj9 form', rs:5, o:[null,0,-1,1,0,null]},
+    {f:'Amaj9 form', rs:5, o:[null,0,2,1,0,0], note:'3rd omitted — airy'},
+  ]},
+  {id:'m9', word:'minor 9th', suf:'m9', iv:[0,2,3,10], ivF:[0,2,3,7,10], disp:[0,3,7,10,2], lbl:{2:'9'}, kind:'s', tpl:[
+    {f:'Cm9 form', rs:5, o:[null,0,-2,0,0,null]},
+    {f:'Em9 form', rs:6, o:[0,2,0,0,0,2]},
+  ]},
+  {id:'6', word:'major 6th', suf:'6', iv:[0,4,7,9], kind:'s', tpl:[
+    {f:'E6 form', rs:6, o:[0,2,2,1,2,0], note:'stretch'},
+    {f:'A6 form', rs:5, o:[null,0,2,2,2,2]},
+    {f:'D6 form', rs:4, o:[null,null,0,2,0,2]},
+  ]},
+  {id:'m6', word:'minor 6th', suf:'m6', iv:[0,3,7,9], kind:'s', tpl:[
+    {f:'Em6 form', rs:6, o:[0,2,2,0,2,0]},
+    {f:'Am6 form', rs:5, o:[null,0,2,2,1,2]},
+    {f:'Dm6 form', rs:4, o:[null,null,0,2,0,1]},
+  ]},
+  {id:'69', word:'six-nine', suf:'6/9', iv:[0,2,4,9], ivF:[0,2,4,7,9], disp:[0,4,7,9,2], lbl:{2:'9'}, kind:'s', tpl:[
+    {f:'C6/9 form', rs:5, o:[null,0,-1,-1,0,0]},
+  ]},
   {id:'sus2', word:'suspended 2', suf:'sus2', iv:[0,2,7], kind:'t', tpl:[
     {f:'Asus2 form', rs:5, o:[null,0,2,2,0,0]},
     {f:'Dsus2 form', rs:4, o:[null,null,0,2,3,0]},
@@ -395,6 +420,11 @@ const QUALS = [
     {f:'Esus4 form', rs:6, o:[0,2,2,2,0,0]},
     {f:'Asus4 form', rs:5, o:[null,0,2,2,3,0]},
     {f:'Dsus4 form', rs:4, o:[null,null,0,2,3,3]},
+  ]},
+  {id:'7sus4', word:'7 suspended 4', suf:'7sus4', iv:[0,5,7,10], kind:'s', tpl:[
+    {f:'E7sus4 form', rs:6, o:[0,2,0,2,0,0]},
+    {f:'A7sus4 form', rs:5, o:[null,0,2,0,3,0]},
+    {f:'D7sus4 form', rs:4, o:[null,null,0,2,1,3]},
   ]},
   {id:'add9', word:'added 9th', suf:'add9', iv:[0,2,4,7], disp:[0,4,7,2], lbl:{2:'9'}, kind:'s', tpl:[
     {f:'Eadd9 form', rs:6, o:[0,2,2,1,0,2], note:'pinky reach'},
@@ -405,15 +435,39 @@ const QUALS = [
     {f:'Emadd9 form', rs:6, o:[0,2,2,0,0,2], note:'pinky reach'},
     {f:'Amadd9 form', rs:5, o:[null,0,2,4,1,0], note:'stretch'},
   ]},
+  {id:'m7b5', word:'half-diminished (m7♭5)', suf:'m7♭5', iv:[0,3,6,10], kind:'s', tpl:[
+    {f:'6th-string form', rs:6, o:[0,null,0,0,-1,null]},
+    {f:'5th-string form', rs:5, o:[null,0,1,0,1,null]},
+  ]},
   {id:'dim', word:'diminished', suf:'dim', iv:[0,3,6], kind:'t', tpl:[
     {f:'5th-string form', rs:5, o:[null,0,1,2,1,null]},
     {f:'4th-string form', rs:4, o:[null,null,0,1,3,1]},
+  ]},
+  {id:'dim7', word:'diminished 7th', suf:'dim7', iv:[0,3,6,9], kind:'s', tpl:[
+    {f:'4th-string form', rs:4, o:[null,null,0,1,0,1], note:'same shape repeats every 3 frets'},
+    {f:'5th-string form', rs:5, o:[null,0,1,2,1,2], note:'stretch'},
   ]},
   {id:'aug', word:'augmented', suf:'aug', iv:[0,4,8], kind:'t', tpl:[
     {f:'5th-string form', rs:5, o:[null,0,-1,-2,-2,null]},
     {f:'4th-string form', rs:4, o:[null,null,0,3,3,2]},
   ]},
+  {id:'mmaj7', word:'minor-major 7', suf:'mMaj7', iv:[0,3,7,11], kind:'s', tpl:[
+    {f:'EmMaj7 form', rs:6, o:[0,2,1,0,0,0]},
+    {f:'AmMaj7 form', rs:5, o:[null,0,2,1,1,0]},
+    {f:'DmMaj7 form', rs:4, o:[null,null,0,2,2,1]},
+  ]},
+  {id:'13', word:'dominant 13th', suf:'13', iv:[0,4,9,10], ivF:[0,2,4,7,9,10], disp:[0,4,7,10,2,9], lbl:{2:'9',9:'13'}, kind:'s', tpl:[
+    {f:'E13 form', rs:6, o:[0,2,0,1,2,0]},
+    {f:'A13 form', rs:5, o:[null,0,2,0,2,2]},
+  ]},
+  {id:'7b9', word:'dominant 7 flat 9', suf:'7♭9', iv:[0,1,4,10], ivF:[0,1,4,7,10], disp:[0,4,7,10,1], lbl:{1:'♭9'}, kind:'s', tpl:[
+    {f:'C7♭9 form', rs:5, o:[null,0,-1,0,-1,null]},
+  ]},
+  {id:'7s9', word:'dominant 7 sharp 9', suf:'7♯9', iv:[0,3,4,10], ivF:[0,3,4,7,10], disp:[0,4,7,10,3], lbl:{3:'♯9'}, kind:'s', tpl:[
+    {f:'7♯9 form', rs:5, o:[null,0,-1,0,1,null]},
+  ]},
 ];
+QUALS.forEach(q=>{ if(!q.ivF) q.ivF=q.iv; });
 const QBY = Object.fromEntries(QUALS.map(q=>[q.id,q]));
 const TRIAD_SETS = [
   {ss:[3,2,1], t:'Top set — strings 1·2·3', short:'strings 1·2·3'},
@@ -527,7 +581,7 @@ for (const p of ROOT_ORDER){
         groups.push({title:set.t, sub:'7th-chord inversions', items});
       }
     }
-    groups.forEach(g=>g.items.forEach(v=>{ TOTAL++; check(p,q.iv,v,rootBig(p)+q.suf+' '+v.label); }));
+    groups.forEach(g=>g.items.forEach(v=>{ TOTAL++; check(p,q.ivF,v,rootBig(p)+q.suf+' '+v.label); }));
     DATA[p][q.id]=groups;
   }
 }
@@ -572,16 +626,16 @@ const parseTab = s => s.split('-').map(x=>x==='x'?null:+x);
 
 /* whole-neck map: horizontal, frets 0–15, high e on top */
 function neckDia(rootP, iv, aria, lbl){
-  const F=15, CW=44, L=46, T=16, RH=22, W=L+F*CW+14, H=T+5*RH+34;
+  const F=24, CW=44, L=46, T=16, RH=22, W=L+F*CW+14, H=T+5*RH+34;
   const yFor=i=>T+(5-i)*RH;
   let s='<svg class="dia" role="img" aria-label="'+aria+'" width="'+W+'" height="'+H+'" viewBox="0 0 '+W+' '+H+'" style="min-width:'+W+'px">';
   const midY=T+2.5*RH;
-  for(const f of [3,5,7,9,15]) s+='<circle class="inlay" cx="'+(L+(f-0.5)*CW)+'" cy="'+midY+'" r="4.5"/>';
-  s+='<circle class="inlay" cx="'+(L+11.5*CW)+'" cy="'+(T+1.5*RH)+'" r="4.5"/><circle class="inlay" cx="'+(L+11.5*CW)+'" cy="'+(T+3.5*RH)+'" r="4.5"/>';
+  for(const f of [3,5,7,9,15,17,19,21]) s+='<circle class="inlay" cx="'+(L+(f-0.5)*CW)+'" cy="'+midY+'" r="4.5"/>';
+  for(const f of [12,24]) s+='<circle class="inlay" cx="'+(L+(f-0.5)*CW)+'" cy="'+(T+1.5*RH)+'" r="4.5"/><circle class="inlay" cx="'+(L+(f-0.5)*CW)+'" cy="'+(T+3.5*RH)+'" r="4.5"/>';
   s+='<line class="nut" x1="'+L+'" y1="'+(T-4)+'" x2="'+L+'" y2="'+(T+5*RH+4)+'"/>';
   for(let f=1;f<=F;f++) s+='<line class="fret" x1="'+(L+f*CW)+'" y1="'+T+'" x2="'+(L+f*CW)+'" y2="'+(T+5*RH)+'"/>';
   for(let i=0;i<6;i++) s+='<line class="str" x1="'+L+'" y1="'+yFor(i)+'" x2="'+(L+F*CW)+'" y2="'+yFor(i)+'" stroke-width="'+(1.55-i*0.13).toFixed(2)+'"/>';
-  for(const f of [3,5,7,9,12,15]) s+='<text class="fr" x="'+(L+(f-0.5)*CW-4)+'" y="'+(T+5*RH+16)+'">'+f+'</text>';
+  for(const f of [3,5,7,9,12,15,17,19,21,24]) s+='<text class="fr" x="'+(L+(f-0.5)*CW-4)+'" y="'+(T+5*RH+16)+'">'+f+'</text>';
   for(let i=0;i<6;i++){
     s+='<text class="sl" x="10" y="'+(yFor(i)+3)+'">'+['E','A','D','G','B','e'][i]+'</text>';
     for(let f=0;f<=F;f++){
@@ -679,7 +733,7 @@ let cur={p:9, q:'maj'};
 let key={p:9, minor:false};
 
 const chordSym=(p,q)=>rootBig(p)+q.suf;
-const noteSpell=(p,q)=>(q.disp||q.iv).map(i=>nName(pc(p+i),p)).join(' · ');
+const noteSpell=(p,q)=>(q.disp||q.ivF||q.iv).map(i=>nName(pc(p+i),p)).join(' · ');
 const cardHTML=(p,q,v,extra,sp)=>{
   const sym=(sp===undefined?rootBig(p):nName(p,sp))+q.suf;
   const aria=sym+' '+v.label+', frets '+tabStr(v.frets);
@@ -697,11 +751,12 @@ function renderChords(){
   h+='<h2>'+chordSym(p,q)+'</h2><span class="qword">'+q.word+'</span>';
   if(rootAlt(p)) h+='<span class="alt">also written '+rootAlt(p)+q.suf+'</span>';
   h+='<span class="notes">'+noteSpell(p,q).replace(nName(p,p),'<b>'+nName(p,p)+'</b>')+'</span>';
+  if(q.ivF.length>q.iv.length) h+='<span class="alt">grips omit the 5th (standard practice) — the neck map shows it</span>';
   if(q.id==='maj'){ const rp=pc(p+9); h+='<button class="rel" data-p="'+rp+'" data-q="min">relative minor: '+rootBig(rp)+'m →</button>'; }
   if(q.id==='min'){ const rp=pc(p+3); h+='<button class="rel" data-p="'+rp+'" data-q="maj">relative major: '+rootBig(rp)+' →</button>'; }
   h+='</div>';
-  h+='<div class="grp"><h4>The whole neck <span>· every '+chordSym(p,q)+' tone, frets 0–15 — the shapes below are windows into this map</span></h4>';
-  h+='<div class="neckwrap">'+neckDia(p,q.iv,chordSym(p,q)+' — all chord tones across the neck',q.lbl)+'</div></div>';
+  h+='<div class="grp"><h4>The whole neck <span>· every '+chordSym(p,q)+' tone, frets 0–24 — the shapes below are windows into this map</span></h4>';
+  h+='<div class="neckwrap">'+neckDia(p,q.ivF,chordSym(p,q)+' — all chord tones across the neck',q.lbl)+'</div></div>';
   for(const g of DATA[p][q.id]){
     if(!g.items.length) continue;
     h+='<div class="grp"><h4>'+g.title+' <span>· '+g.sub+'</span></h4><div class="cards">';
@@ -726,14 +781,14 @@ function setChord(p,q,fromHash){
 
 /* ================= keys mode ================= */
 const vKeys=document.getElementById('v-keys');
-const DEG_MAJ={off:[0,2,4,5,7,9,11], q:['maj','min','min','maj','maj','min','dim'], rn:['I','ii','iii','IV','V','vi','vii°'], s7:['maj7','m7','m7','maj7','7','m7','m7♭5']};
-const DEG_MIN={off:[0,2,3,5,7,8,10], q:['min','dim','maj','min','min','maj','maj'], rn:['i','ii°','III','iv','v','VI','VII'], s7:['m7','m7♭5','maj7','m7','m7','maj7','7']};
+const DEG_MAJ={off:[0,2,4,5,7,9,11], q:['maj','min','min','maj','maj','min','dim'], rn:['I','ii','iii','IV','V','vi','vii°'], q7:['maj7','m7','m7','maj7','d7','m7','m7b5']};
+const DEG_MIN={off:[0,2,3,5,7,8,10], q:['min','dim','maj','min','min','maj','maj'], rn:['i','ii°','III','iv','v','VI','VII'], q7:['m7','m7b5','maj7','m7','m7','maj7','d7']};
 const PROGS_MAJ=[{n:'I – IV – V',d:[0,3,4]},{n:'I – V – vi – IV',d:[0,4,5,3]},{n:'vi – IV – I – V',d:[5,3,0,4]},{n:'ii – V – I',d:[1,4,0]}];
 const PROGS_MIN=[{n:'i – VI – III – VII',d:[0,5,2,6]},{n:'i – iv – v',d:[0,3,4]},{n:'i – VII – VI',d:[0,6,5]},{n:'i – iv – VII – III',d:[0,3,6,2]}];
 let kprog=0, kset=0, kvar=0;
 const famOf=()=>{
   const D=key.minor?DEG_MIN:DEG_MAJ;
-  return D.off.map((o,i)=>({rn:D.rn[i], p:pc(key.p+o), q:D.q[i], s7:D.s7[i]}));
+  return D.off.map((o,i)=>({rn:D.rn[i], p:pc(key.p+o), q:D.q[i], q7:D.q7[i]}));
 };
 function renderKeys(){
   const D=key.minor?DEG_MIN:DEG_MAJ;
@@ -750,7 +805,12 @@ function renderKeys(){
   h+='</div>';
   h+='<div class="grp"><h4>The chord family <span>· every chord that lives in this key — tap one to study it</span></h4><div class="fam">';
   for(const f of fam){
-    h+='<button class="famcard" data-p="'+f.p+'" data-q="'+f.q+'"><span class="rn">'+f.rn+'</span><span class="cs">'+kN(f.p)+QBY[f.q].suf+'</span><span class="c7">'+kN(f.p)+f.s7+'</span></button>';
+    h+='<button class="famcard" data-p="'+f.p+'" data-q="'+f.q+'"><span class="rn">'+f.rn+'</span><span class="cs">'+kN(f.p)+QBY[f.q].suf+'</span></button>';
+  }
+  h+='</div></div>';
+  h+='<div class="grp"><h4>The 7th-chord family <span>· the same seven degrees with their 7ths — tap to study</span></h4><div class="fam">';
+  for(const f of fam){
+    h+='<button class="famcard" data-p="'+f.p+'" data-q="'+f.q7+'"><span class="rn">'+f.rn+'7</span><span class="cs">'+kN(f.p)+QBY[f.q7].suf+'</span></button>';
   }
   h+='</div></div>';
   h+='<div class="grp"><h4>Progression trainer <span>· smallest-movement path through the inversions — stay in the window, let the chords come to you</span></h4>';
