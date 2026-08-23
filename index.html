@@ -40,6 +40,11 @@
   .brand{font-family:"Barlow Condensed",sans-serif; font-weight:700; font-size:22px; letter-spacing:.4px}
   .brand .amp{color:var(--accent)}
   .stat{color:var(--muted); font-size:12.5px}
+  #installbtn{
+    display:none; border:1px solid var(--accent); background:var(--accent); color:var(--accent-ink);
+    border-radius:999px; padding:4px 14px; font-size:13px; font-weight:700; cursor:pointer; font-family:inherit;
+  }
+  #installbtn.show{display:inline-flex}
   .modes{display:flex; border:1px solid var(--line); border-radius:8px; overflow:hidden; margin-left:auto}
   .modes button{
     border:0; border-right:1px solid var(--line-soft); background:var(--surface); color:var(--muted);
@@ -295,6 +300,7 @@
   <div class="brandrow">
     <div class="brand"><span class="amp">●</span> Fretboard Chord Lab</div>
     <div class="stat" id="stat">…</div>
+    <button id="installbtn">📲 Install</button>
     <div class="modes" id="modes" aria-label="Mode"></div>
   </div>
   <nav class="roots" id="rootnav" aria-label="Pick a root"></nav>
@@ -327,7 +333,7 @@
       <li><b>Recall beats recognition.</b> A few minutes in <b>Drill</b> daily is worth more than an hour of reading diagrams. Missed chords come back around automatically.</li>
       <li><b>Say the notes out loud.</b> Notes mode until you can name every dot, then Intervals mode and name the R–3–5 instead. When both are boring, the neck is yours.</li>
     </ol>
-    <p><b>On your phone:</b> open this page in your phone browser, then <b>Share → Add to Home Screen</b> (iPhone) or <b>⋮ → Add to Home screen</b> (Android). It gets its own icon and opens like an app — bottom tab bar, swipe between chord qualities, and the screen stays awake while the metronome or a changes-run is going.</p>
+    <p><b>On your phone:</b> open this page in <b>Chrome or Safari itself</b> (not inside another app's built-in browser — copy the link and paste it into the address bar). On Android, tap the <b>📲 Install</b> button that appears in the top bar, or <b>⋮ → Add to Home screen → Install</b>. On iPhone: <b>Share → Add to Home Screen</b>. It gets its own icon, opens fullscreen like an app, works offline, and the screen stays awake during metronome and changes runs.</p>
     <p><b>Honest footnotes:</b> impractical grips are omitted or flagged (full G-form barres, some C-form stretches). Spellings are practical guitar names (B♭, E♭, A♭, C♯, F♯). The metronome is scheduled on the audio hardware clock (sub-millisecond jitter) — keep the tab in the foreground on phones. Want drop-3, m7♭5, dim7, or a Drop-D tuning toggle? Say the word.</p>
   </div>
 </footer>
@@ -1070,6 +1076,24 @@ addEventListener('keydown',e=>{
     }
   },{passive:true});
 })();
+
+/* real install button — appears only when the browser confirms the app is installable */
+let installEvt=null;
+addEventListener('beforeinstallprompt',e=>{
+  e.preventDefault(); installEvt=e;
+  document.getElementById('installbtn').classList.add('show');
+});
+addEventListener('appinstalled',()=>{
+  installEvt=null;
+  document.getElementById('installbtn').classList.remove('show');
+});
+document.getElementById('installbtn').addEventListener('click',async()=>{
+  if(!installEvt) return;
+  installEvt.prompt();
+  try{ await installEvt.userChoice; }catch(e){}
+  installEvt=null;
+  document.getElementById('installbtn').classList.remove('show');
+});
 
 /* keep the screen awake while the metronome or a changes-run is going (https contexts) */
 let wl=null;
