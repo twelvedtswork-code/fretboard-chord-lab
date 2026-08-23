@@ -106,10 +106,14 @@
   .notes{color:var(--muted); font-size:14px}
   .notes b{color:var(--text); font-weight:700}
   .rel{
-    margin-left:auto; text-decoration:none; font-size:13px; color:var(--accent); cursor:pointer;
+    text-decoration:none; font-size:13px; color:var(--accent); cursor:pointer;
     border:1px solid var(--accent); border-radius:999px; padding:3px 13px; background:var(--accent-soft); font-family:inherit;
   }
   .rel:hover{background:var(--accent); color:var(--accent-ink)}
+  .rels{margin-left:auto; display:flex; gap:6px; flex-wrap:wrap; align-items:center}
+  .khead .rel{margin-left:auto}
+  body:not([data-mode="chords"]) #qualrow{display:none}
+  .ftab[aria-pressed="true"]{background:var(--accent); border-color:var(--accent)}
   .grp{margin-top:16px}
   .grp h4{
     margin:0 0 8px; font-size:12px; font-weight:700; color:var(--muted);
@@ -305,6 +309,7 @@
   </div>
   <nav class="roots" id="rootnav" aria-label="Pick a root"></nav>
   <div class="ctrls" id="ctrls"></div>
+  <div class="ctrls" id="qualrow" aria-label="Pick a chord quality"></div>
 </header>
 
 <main>
@@ -469,6 +474,14 @@ const QUALS = [
 ];
 QUALS.forEach(q=>{ if(!q.ivF) q.ivF=q.iv; });
 const QBY = Object.fromEntries(QUALS.map(q=>[q.id,q]));
+const FAMILIES=[
+  {id:'fmaj', n:'major', q:['maj','maj7','maj9','6','69','add9']},
+  {id:'fmin', n:'minor', q:['min','m7','m9','m6','madd9','mmaj7']},
+  {id:'fdom', n:'dominant', q:['d7','9','13','7sus4','7b9','7s9']},
+  {id:'fsus', n:'sus', q:['sus2','sus4']},
+  {id:'fdim', n:'dim & aug', q:['dim','dim7','m7b5','aug']},
+];
+const famOfQ = id => FAMILIES.find(f=>f.q.includes(id));
 const TRIAD_SETS = [
   {ss:[3,2,1], t:'Top set — strings 1·2·3', short:'strings 1·2·3'},
   {ss:[4,3,2], t:'Strings 2·3·4', short:'strings 2·3·4'},
@@ -752,8 +765,24 @@ function renderChords(){
   if(rootAlt(p)) h+='<span class="alt">also written '+rootAlt(p)+q.suf+'</span>';
   h+='<span class="notes">'+noteSpell(p,q).replace(nName(p,p),'<b>'+nName(p,p)+'</b>')+'</span>';
   if(q.ivF.length>q.iv.length) h+='<span class="alt">grips omit the 5th (standard practice) — the neck map shows it</span>';
-  if(q.id==='maj'){ const rp=pc(p+9); h+='<button class="rel" data-p="'+rp+'" data-q="min">relative minor: '+rootBig(rp)+'m →</button>'; }
-  if(q.id==='min'){ const rp=pc(p+3); h+='<button class="rel" data-p="'+rp+'" data-q="maj">relative major: '+rootBig(rp)+' →</button>'; }
+  const rels=[];
+  const rel=(o,qid,t)=>rels.push({p:pc(p+o), q:qid, t:t});
+  const sym=(o,qid)=>rootBig(pc(p+o))+QBY[qid].suf;
+  if(q.id==='maj') rel(9,'min','relative minor: '+sym(9,'min'));
+  if(q.id==='min') rel(3,'maj','relative major: '+sym(3,'maj'));
+  if(q.id==='m7') rel(3,'6','same notes as '+sym(3,'6'));
+  if(q.id==='6') rel(9,'m7','same notes as '+sym(9,'m7'));
+  if(q.id==='m7b5') rel(3,'m6','same notes as '+sym(3,'m6'));
+  if(q.id==='m6') rel(9,'m7b5','same notes as '+sym(9,'m7b5'));
+  if(q.id==='sus2') rel(7,'sus4','same notes as '+sym(7,'sus4'));
+  if(q.id==='sus4') rel(5,'sus2','same notes as '+sym(5,'sus2'));
+  if(q.id==='maj7') rel(9,'m9','lives inside '+sym(9,'m9'));
+  if(q.id==='m9') rel(3,'maj7','contains '+sym(3,'maj7'));
+  if(famOfQ(q.id).id==='fdom'){ rel(5,'maj','resolves to '+sym(5,'maj')); rel(5,'min','or '+sym(5,'min')); }
+  if(q.id==='d7') rel(6,'d7','tritone twin: '+sym(6,'d7'));
+  if(q.id==='dim7') [3,6,9].forEach(o=>rel(o,'dim7','= '+sym(o,'dim7')));
+  if(q.id==='aug') [4,8].forEach(o=>rel(o,'aug','= '+sym(o,'aug')));
+  if(rels.length) h+='<div class="rels">'+rels.map(x=>'<button class="rel" data-p="'+x.p+'" data-q="'+x.q+'">'+x.t+' →</button>').join('')+'</div>';
   h+='</div>';
   h+='<div class="grp"><h4>The whole neck <span>· every '+chordSym(p,q)+' tone, frets 0–24 — the shapes below are windows into this map</span></h4>';
   h+='<div class="neckwrap">'+neckDia(p,q.ivF,chordSym(p,q)+' — all chord tones across the neck',q.lbl)+'</div></div>';
@@ -766,10 +795,18 @@ function renderChords(){
   h+='</article>';
   vChords.innerHTML=h;
   nav.querySelectorAll('button').forEach(b=>b.classList.toggle('on', mode==='chords' && +b.dataset.p===p));
-  document.querySelectorAll('.qtab').forEach(b=>{
-    b.textContent=chordSym(p,QBY[b.dataset.q]);
-    b.setAttribute('aria-pressed', b.dataset.q===cur.q);
-  });
+  const fam=famOfQ(cur.q);
+  document.querySelectorAll('.ftab').forEach(b=>b.setAttribute('aria-pressed', b.dataset.f===fam.id));
+  const qr=document.getElementById('qualrow');
+  qr.innerHTML='';
+  for(const id of fam.q){
+    const b=document.createElement('button');
+    b.className='qtab'; b.dataset.q=id; b.title=QBY[id].word;
+    b.textContent=chordSym(p,QBY[id]);
+    b.setAttribute('aria-pressed', id===cur.q);
+    b.addEventListener('click',()=>setChord(cur.p,id));
+    qr.appendChild(b);
+  }
 }
 function setChord(p,q,fromHash){
   cur={p:+p, q:q};
@@ -1021,10 +1058,11 @@ for(const p of ROOT_ORDER){
   b.addEventListener('click',()=>{ if(mode==='keys') setKey(p,key.minor); else setChord(p,cur.q); });
   nav.appendChild(b);
 }
-for(const q of QUALS){
+for(const f of FAMILIES){
   const b=document.createElement('button');
-  b.className='qtab'; b.dataset.q=q.id; b.title=q.word; b.textContent=q.suf||'maj';
-  b.addEventListener('click',()=>setChord(cur.p,q.id));
+  b.className='qtab ftab'; b.dataset.f=f.id; b.textContent=f.n;
+  b.title=f.q.map(id=>QBY[id].suf||'maj').join(' · ');
+  b.addEventListener('click',()=>setChord(cur.p, f.q[0]));
   ctrls.appendChild(b);
 }
 const ktog=document.createElement('div'); ktog.className='lblsw keytog'; ktog.style.marginLeft='0';
@@ -1140,8 +1178,8 @@ addEventListener('keydown',e=>{
     if(NAT[k]!==undefined){ const n=NAT[k]; setChord(cur.p===n&&SHARP_OF[n]!==undefined?SHARP_OF[n]:n, cur.q); }
     else if(e.key==='ArrowRight'||e.key==='ArrowLeft'){
       e.preventDefault();
-      const i=QUALS.findIndex(q=>q.id===cur.q);
-      setChord(cur.p, QUALS[(i+(e.key==='ArrowRight'?1:QUALS.length-1))%QUALS.length].id);
+      const fam=famOfQ(cur.q), i=fam.q.indexOf(cur.q);
+      setChord(cur.p, fam.q[(i+(e.key==='ArrowRight'?1:fam.q.length-1))%fam.q.length]);
     }
   } else if(mode==='keys'){
     if(NAT[k]!==undefined){ const n=NAT[k]; setKey(key.p===n&&SHARP_OF[n]!==undefined?SHARP_OF[n]:n, key.minor); }
@@ -1168,8 +1206,8 @@ addEventListener('keydown',e=>{
     if(sx===null) return;
     const dx=e.changedTouches[0].clientX-sx, dy=e.changedTouches[0].clientY-sy; sx=null;
     if(Math.abs(dx)>70 && Math.abs(dy)<50){
-      const i=QUALS.findIndex(q=>q.id===cur.q);
-      setChord(cur.p, QUALS[(i+(dx<0?1:QUALS.length-1))%QUALS.length].id);
+      const fam=famOfQ(cur.q), i=fam.q.indexOf(cur.q);
+      setChord(cur.p, fam.q[(i+(dx<0?1:fam.q.length-1))%fam.q.length]);
     }
   },{passive:true});
 })();
