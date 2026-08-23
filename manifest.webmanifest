@@ -1,0 +1,16 @@
+{
+  "name": "Fretboard Chord Lab",
+  "short_name": "Chord Lab",
+  "description": "Every chord, every shape, every inversion — plus recall drills, key families, and a sample-accurate metronome.",
+  "start_url": ".",
+  "scope": ".",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#171210",
+  "theme_color": "#171210",
+  "icons": [
+    { "src": "icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}
