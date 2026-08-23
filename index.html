@@ -334,7 +334,7 @@
       <li><b>Say the notes out loud.</b> Notes mode until you can name every dot, then Intervals mode and name the R–3–5 instead. When both are boring, the neck is yours.</li>
     </ol>
     <p><b>On your phone:</b> open this page in <b>Chrome or Safari itself</b> (not inside another app's built-in browser — copy the link and paste it into the address bar). On Android, tap the <b>📲 Install</b> button that appears in the top bar, or <b>⋮ → Add to Home screen → Install</b>. On iPhone: <b>Share → Add to Home Screen</b>. It gets its own icon, opens fullscreen like an app, works offline, and the screen stays awake during metronome and changes runs.</p>
-    <p><b>Honest footnotes:</b> impractical grips are omitted or flagged (full G-form barres, some C-form stretches). Spellings are practical guitar names (B♭, E♭, A♭, C♯, F♯). The metronome is scheduled on the audio hardware clock (sub-millisecond jitter) — keep the tab in the foreground on phones. Want drop-3, m7♭5, dim7, or a Drop-D tuning toggle? Say the word.</p>
+    <p><b>Honest footnotes:</b> impractical grips are omitted or flagged (full G-form barres, some C-form stretches). Spellings are practical guitar names (B♭, E♭, A♭, C♯, F♯). The metronome is scheduled on the audio hardware clock (sub-millisecond jitter) — keep the tab in the foreground on phones. Want drop-3 voicings, m7♭5, dim7, or a Drop-D tuning toggle? Say the word.</p>
   </div>
 </footer>
 
@@ -396,6 +396,15 @@ const QUALS = [
     {f:'Asus4 form', rs:5, o:[null,0,2,2,3,0]},
     {f:'Dsus4 form', rs:4, o:[null,null,0,2,3,3]},
   ]},
+  {id:'add9', word:'added 9th', suf:'add9', iv:[0,2,4,7], disp:[0,4,7,2], lbl:{2:'9'}, kind:'s', tpl:[
+    {f:'Eadd9 form', rs:6, o:[0,2,2,1,0,2], note:'pinky reach'},
+    {f:'Aadd9 form', rs:5, o:[null,0,2,4,2,0]},
+    {f:'Cadd9 form', rs:5, o:[null,0,-1,-3,0,-3]},
+  ]},
+  {id:'madd9', word:'minor added 9th', suf:'madd9', iv:[0,2,3,7], disp:[0,3,7,2], lbl:{2:'9'}, kind:'s', tpl:[
+    {f:'Emadd9 form', rs:6, o:[0,2,2,0,0,2], note:'pinky reach'},
+    {f:'Amadd9 form', rs:5, o:[null,0,2,4,1,0], note:'stretch'},
+  ]},
   {id:'dim', word:'diminished', suf:'dim', iv:[0,3,6], kind:'t', tpl:[
     {f:'5th-string form', rs:5, o:[null,0,1,2,1,null]},
     {f:'4th-string form', rs:4, o:[null,null,0,1,3,1]},
@@ -415,6 +424,11 @@ const TRIAD_SETS = [
 const DROP2_SETS = [
   {ss:[4,3,2,1], t:'Drop-2 — strings 1–4', short:'drop-2, strings 1–4'},
   {ss:[5,4,3,2], t:'Drop-2 — strings 2–5', short:'drop-2, strings 2–5'},
+];
+const SPREAD_SETS = [
+  {ss:[4,2,1], t:'Spread triads — strings 1·2·4', short:'spread, strings 1·2·4'},
+  {ss:[5,3,2], t:'Spread triads — strings 2·3·5', short:'spread, strings 2·3·5'},
+  {ss:[6,4,3], t:'Spread triads — strings 3·4·6', short:'spread, strings 3·4·6'},
 ];
 const sIdx = s => 6 - s;
 
@@ -445,6 +459,21 @@ function closeTriad(rootP, iv, ss, rot){
     }
   }
   return null;
+}
+function spreadTriad(rootP, iv, ss, rot){
+  const s=[iv[rot]];
+  for(let j=1;j<3;j++){ let nx=iv[(rot+j)%3]; while(nx<=s[j-1]) nx+=12; s.push(nx); }
+  const d=[s[0], s[2], s[1]+12];   // open voicing: middle voice up an octave
+  const idx=ss.map(sIdx);
+  let need=-999;
+  for(let i=0;i<3;i++) need=Math.max(need, TUN[idx[i]]-d[i]);
+  let R=need + pc(rootP-pc(need));
+  const fs=idx.map((ti,i)=>R+d[i]-TUN[ti]);
+  if (Math.max(...fs)>17 || (Math.max(...fs)-Math.min(...fs))>5) return null;
+  const frets=[null,null,null,null,null,null];
+  idx.forEach((ti,i)=>frets[ti]=fs[i]);
+  const bi=pc(d[0]);
+  return {frets, label: bi===0 ? 'Root position' : INT[bi]+' in bass'};
 }
 function drop2(rootP, iv, ss, rot){
   const s=[iv[rot]];
@@ -484,6 +513,12 @@ for (const p of ROOT_ORDER){
         items.sort((a,b)=>Math.min(...a.frets.filter(x=>x!==null))-Math.min(...b.frets.filter(x=>x!==null)));
         groups.push({title:set.t, sub:'triad inversions', items});
       }
+      for (const set of SPREAD_SETS){
+        const items=[];
+        for(let r=0;r<3;r++){ const v=spreadTriad(p,q.iv,set.ss,r); if(v) items.push(v); }
+        items.sort((a,b)=>Math.min(...a.frets.filter(x=>x!==null))-Math.min(...b.frets.filter(x=>x!==null)));
+        groups.push({title:set.t, sub:'open-voiced — middle voice up an octave, wide piano-like spacing', items});
+      }
     } else {
       for (const set of DROP2_SETS){
         const items=[];
@@ -499,7 +534,7 @@ for (const p of ROOT_ORDER){
 console.log('Fretboard Chord Lab: '+TOTAL+' voicings generated, '+ERRS+' tone errors');
 
 /* ================= diagrams ================= */
-function dia(rootP, frets, aria, sp){
+function dia(rootP, frets, aria, sp, lbl){
   if(sp===undefined) sp=rootP;
   const used=frets.filter(f=>f!==null && f>0);
   const maxF=used.length?Math.max(...used):0, minF=used.length?Math.min(...used):1;
@@ -518,7 +553,7 @@ function dia(rootP, frets, aria, sp){
     const x=L+i*GX, f=frets[i];
     if(f===null){ s+='<text class="om" x="'+x+'" y="'+(T-8)+'">×</text>'; continue; }
     const it=pc(TUN[i]+f-rootP), root=it===0;
-    const nm=nName(pc(TUN[i]+f), sp), il=INT[it];
+    const nm=nName(pc(TUN[i]+f), sp), il=(lbl&&lbl[it])||INT[it];
     if(f===0){
       s+='<circle class="oc" cx="'+x+'" cy="'+(T-11)+'" r="4"/>';
       s+='<text class="om t-note" x="'+x+'" y="'+(T+rows*GY+8)+'" font-size="7">'+nm+'</text>';
@@ -536,7 +571,7 @@ const tabStr = frets => frets.map(f=>f===null?'x':f).join('-');
 const parseTab = s => s.split('-').map(x=>x==='x'?null:+x);
 
 /* whole-neck map: horizontal, frets 0–15, high e on top */
-function neckDia(rootP, iv, aria){
+function neckDia(rootP, iv, aria, lbl){
   const F=15, CW=44, L=46, T=16, RH=22, W=L+F*CW+14, H=T+5*RH+34;
   const yFor=i=>T+(5-i)*RH;
   let s='<svg class="dia" role="img" aria-label="'+aria+'" width="'+W+'" height="'+H+'" viewBox="0 0 '+W+' '+H+'" style="min-width:'+W+'px">';
@@ -552,7 +587,7 @@ function neckDia(rootP, iv, aria){
     for(let f=0;f<=F;f++){
       const it=pc(TUN[i]+f-rootP);
       if(!iv.includes(it)) continue;
-      const root=it===0, nm=nName(pc(TUN[i]+f), rootP), il=INT[it];
+      const root=it===0, nm=nName(pc(TUN[i]+f), rootP), il=(lbl&&lbl[it])||INT[it];
       const cx = f===0 ? L-16 : L+(f-0.5)*CW, cy=yFor(i);
       s+='<circle class="dotc'+(root?' root':'')+'" cx="'+cx+'" cy="'+cy+'" r="8.2"/>';
       s+='<text class="dl t-note'+(root?' root':'')+'" x="'+cx+'" y="'+(cy+2.8)+'">'+nm+'</text>';
@@ -644,11 +679,11 @@ let cur={p:9, q:'maj'};
 let key={p:9, minor:false};
 
 const chordSym=(p,q)=>rootBig(p)+q.suf;
-const noteSpell=(p,q)=>q.iv.map(i=>nName(pc(p+i),p)).join(' · ');
+const noteSpell=(p,q)=>(q.disp||q.iv).map(i=>nName(pc(p+i),p)).join(' · ');
 const cardHTML=(p,q,v,extra,sp)=>{
   const sym=(sp===undefined?rootBig(p):nName(p,sp))+q.suf;
   const aria=sym+' '+v.label+', frets '+tabStr(v.frets);
-  return '<figure class="vc">'+dia(p,v.frets,aria,sp)
+  return '<figure class="vc">'+dia(p,v.frets,aria,sp,q.lbl)
     +'<button class="pl" data-t="'+tabStr(v.frets)+'" aria-label="hear '+sym+'">♪</button>'
     +'<figcaption>'+(extra||'')+'<b>'+v.label+'</b><span class="tab">'+tabStr(v.frets)+'</span>'
     +(v.note?'<span class="note">'+v.note+'</span>':'')+'</figcaption></figure>';
@@ -666,7 +701,7 @@ function renderChords(){
   if(q.id==='min'){ const rp=pc(p+3); h+='<button class="rel" data-p="'+rp+'" data-q="maj">relative major: '+rootBig(rp)+' →</button>'; }
   h+='</div>';
   h+='<div class="grp"><h4>The whole neck <span>· every '+chordSym(p,q)+' tone, frets 0–15 — the shapes below are windows into this map</span></h4>';
-  h+='<div class="neckwrap">'+neckDia(p,q.iv,chordSym(p,q)+' — all chord tones across the neck')+'</div></div>';
+  h+='<div class="neckwrap">'+neckDia(p,q.iv,chordSym(p,q)+' — all chord tones across the neck',q.lbl)+'</div></div>';
   for(const g of DATA[p][q.id]){
     if(!g.items.length) continue;
     h+='<div class="grp"><h4>'+g.title+' <span>· '+g.sub+'</span></h4><div class="cards">';
@@ -769,6 +804,7 @@ function drillCandidates(){
     if(!dcfg.quals.includes(q.id)) continue;
     if(dcfg.scopes.includes('mv')) q.tpl.forEach((t,i)=>list.push({q:q.id,type:'mv',a:i,b:0}));
     if(q.kind==='t'&&dcfg.scopes.includes('tri')) for(let si=0;si<4;si++) for(let r=0;r<3;r++) list.push({q:q.id,type:'tri',a:si,b:r});
+    if(q.kind==='t'&&dcfg.scopes.includes('spr')) for(let si=0;si<3;si++) for(let r=0;r<3;r++) list.push({q:q.id,type:'spr',a:si,b:r});
     if(q.kind==='s'&&dcfg.scopes.includes('d2')) for(let si=0;si<2;si++) for(let r=0;r<4;r++) list.push({q:q.id,type:'d2',a:si,b:r});
   }
   return list;
@@ -778,6 +814,7 @@ function buildPrompt(p,c){
   let v=null, where='';
   if(c.type==='mv'){ v=movable(p,q.tpl[c.a]); where=q.tpl[c.a].f; }
   else if(c.type==='tri'){ v=closeTriad(p,q.iv,TRIAD_SETS[c.a].ss,c.b); where=(v?v.label:'')+' — '+TRIAD_SETS[c.a].short; }
+  else if(c.type==='spr'){ v=spreadTriad(p,q.iv,SPREAD_SETS[c.a].ss,c.b); where=(v?v.label:'')+' — '+SPREAD_SETS[c.a].short; }
   else{ v=drop2(p,q.iv,DROP2_SETS[c.a].ss,c.b); where=(v?v.label:'')+' — '+DROP2_SETS[c.a].short; }
   if(!v) return null;
   return {p, c, v, key:[p,c.q,c.type,c.a,c.b].join('|'), sym:chordSym(p,q), where};
@@ -814,7 +851,7 @@ function renderDrill(){
   h+='<div class="dcfg"><span class="lab">Drill</span>'
     +QUALS.map(q=>'<button class="chipbtn dq" data-q="'+q.id+'" aria-pressed="'+dcfg.quals.includes(q.id)+'">'+(q.suf||'maj')+'</button>').join('')+'</div>';
   h+='<div class="dcfg"><span class="lab">Ask me</span>'
-    +[['mv','Shapes'],['tri','Triads'],['d2','Drop-2']].map(s=>'<button class="chipbtn ds" data-s="'+s[0]+'" aria-pressed="'+dcfg.scopes.includes(s[0])+'">'+s[1]+'</button>').join('')+'</div>';
+    +[['mv','Shapes'],['tri','Triads'],['spr','Spread'],['d2','Drop-2']].map(s=>'<button class="chipbtn ds" data-s="'+s[0]+'" aria-pressed="'+dcfg.scopes.includes(s[0])+'">'+s[1]+'</button>').join('')+'</div>';
   h+='<div class="dstage">';
   if(!dstate){
     h+='<div class="dsub">Pick at least one quality and one voicing type above, then —</div>';
@@ -1101,7 +1138,7 @@ async function wakeOn(){ if(wl) return; try{ if(navigator.wakeLock) wl=await nav
 function wakeMaybeOff(){ if(!met.on && !omc.run){ try{ if(wl) wl.release(); }catch(e){} wl=null; } }
 document.addEventListener('visibilitychange',()=>{ if(!document.hidden && (met.on||omc.run)){ wl=null; wakeOn(); } });
 
-document.getElementById('stat').textContent='108 chords · '+TOTAL.toLocaleString()+' voicings · 4 modes';
+document.getElementById('stat').textContent=(12*QUALS.length)+' chords · '+TOTAL.toLocaleString()+' voicings · 4 modes';
 const tt=document.getElementById('toTop');
 addEventListener('scroll',()=>tt.classList.toggle('show',scrollY>700),{passive:true});
 tt.addEventListener('click',()=>scrollTo({top:0}));
