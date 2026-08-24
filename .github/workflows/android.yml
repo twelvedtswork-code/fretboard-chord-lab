@@ -18,8 +18,13 @@ jobs:
         run: printf '%s' "${{ secrets.ANDROID_KEYSTORE_B64 }}" | tr -d '\r\n ' | base64 -d > signing.keystore
       - name: Point bubblewrap at the runner toolchain
         run: |
+          SDK="${ANDROID_HOME:-${ANDROID_SDK_ROOT:-/usr/local/lib/android/sdk}}"
+          echo "JAVA_HOME=$JAVA_HOME"
+          echo "SDK=$SDK"
+          ls "$SDK" || true
           mkdir -p ~/.bubblewrap
-          printf '{"jdkPath":"%s","androidSdkPath":"%s"}' "$JAVA_HOME" "$ANDROID_HOME" > ~/.bubblewrap/config.json
+          printf '{"jdkPath":"%s","androidSdkPath":"%s"}' "$JAVA_HOME" "$SDK" > ~/.bubblewrap/config.json
+          cat ~/.bubblewrap/config.json
       - name: Stamp version from run number
         run: |
           jq --argjson vc ${{ github.run_number }} '.appVersionCode=$vc | .appVersionName=("1.0."+($vc|tostring))' twa-manifest.json > t.json && mv t.json twa-manifest.json
