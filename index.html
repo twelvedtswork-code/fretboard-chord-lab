@@ -282,6 +282,18 @@
   .vsel.on{border-color:var(--accent); box-shadow:0 0 0 1px var(--accent)}
   .vsel .tab{display:block; font-family:"IBM Plex Mono",Consolas,monospace; font-size:10.5px; color:var(--faint)}
   .vsel .ccv{margin-top:2px}
+  .dh{cursor:grab; touch-action:none; user-select:none}
+  .dh:active{cursor:grabbing}
+  .ccard.dragging, .brk.dragging{opacity:.35}
+  .dropbefore{box-shadow:-4px 0 0 0 var(--accent)}
+  .dropafter{box-shadow:4px 0 0 0 var(--accent)}
+  .dragghost{
+    position:fixed; z-index:90; pointer-events:none; padding:6px 14px; border-radius:999px;
+    background:var(--accent); color:var(--accent-ink); font-weight:700; font-size:14px; font-family:inherit;
+    box-shadow:0 4px 14px rgba(0,0,0,.3);
+  }
+  .edrow{display:flex; flex-wrap:wrap; gap:6px; margin:10px 0}
+  .edlab{font-size:11px; color:var(--faint); text-transform:uppercase; letter-spacing:.1em; width:100%}
 
   footer{max-width:1180px; margin:0 auto; padding:0 14px 70px; color:var(--muted); font-size:13.5px}
   footer .card{background:var(--surface); border:1px solid var(--line); border-radius:10px; padding:14px 18px; box-shadow:var(--shadow)}
@@ -1309,7 +1321,7 @@ const SCALES=[
   {id:'mixo', n:'Mixolydian',       iv:[0,2,4,5,7,9,10]},
   {id:'hmin', n:'Harmonic minor',   iv:[0,2,3,5,7,8,11]},
 ];
-let playSel=0, sheetIdx=null, scSel=null;
+let playSel=0, sheetIdx=null, editIdx=null, scSel=null;
 const chordPcs=(p,q)=>new Set(QBY[q].ivF.map(x=>pc(p+x)));
 function sectionsOf(){
   const secs=[{label:'Whole song', from:0, to:prog.length}];
@@ -1340,19 +1352,19 @@ function renderPlay(){
   const secs=sectionsOf();
   if(playSel>=secs.length) playSel=0;
   let h='<div class="khead"><h2>Play</h2><span class="qword">your song — reorder it, re-voice it, section it, then find the solo scale</span></div>';
-  h+='<div class="grp"><h4>The song <span>· tap a chord card to pick its voicing · ‹ › move · × remove · tap a section name to change it</span></h4>';
+  h+='<div class="grp"><h4>The song <span>· drag ⠿ to reorder · tap a card for voicings · ✎ change the chord · × remove · tap a section name to change it</span></h4>';
   if(!prog.length) h+='<div class="fempty">no chords yet — add below, or tap “+ progression” on any chord page</div>';
   h+='<div class="songrow">';
   prog.forEach((it,i)=>{
     if(it.t==='b'){
       h+='<div class="brk"><button class="brklbl" data-blbl="'+i+'">'+it.label+'</button>'
-        +'<span class="cctl"><button data-mv="'+i+'|-1" aria-label="move left">‹</button><button data-mv="'+i+'|1" aria-label="move right">›</button><button data-del="'+i+'" aria-label="remove">×</button></span></div>';
+        +'<span class="cctl"><button class="dh" data-dh="'+i+'" aria-label="drag to reorder">⠿</button><button data-del="'+i+'" aria-label="remove">×</button></span></div>';
     } else {
       const v=chosenV(it), sym=chordSym(it.p,QBY[it.q]);
       h+='<div class="ccard"><button class="cpick" data-ci="'+i+'" title="choose a voicing">'
         +dia(it.p,v.fr,sym+' '+v.label,undefined,QBY[it.q].lbl)
         +'<span class="ccname">'+sym+'</span><span class="ccv">'+v.label+' ▾</span></button>'
-        +'<span class="cctl"><button data-mv="'+i+'|-1" aria-label="move left">‹</button><button class="pl" data-t="'+tabStr(v.fr)+'" aria-label="hear it">♪</button><button data-mv="'+i+'|1" aria-label="move right">›</button><button data-del="'+i+'" aria-label="remove">×</button></span></div>';
+        +'<span class="cctl"><button class="dh" data-dh="'+i+'" aria-label="drag to reorder">⠿</button><button class="pl" data-t="'+tabStr(v.fr)+'" aria-label="hear it">♪</button><button data-ed="'+i+'" aria-label="change chord">✎</button><button data-del="'+i+'" aria-label="remove">×</button></span></div>';
     }
   });
   h+='</div>';
@@ -1391,22 +1403,35 @@ function renderPlay(){
     });
     h+='</div></div></div>';
   }
+  if(editIdx!==null && prog[editIdx] && prog[editIdx].t==='c'){
+    const it=prog[editIdx], fam=famOfQ(it.q);
+    h+='<div class="sheetwrap" id="sheetbg"><div class="sheet"><div class="sheethead"><h3>Change chord — '+chordSym(it.p,QBY[it.q])+'</h3><button class="chipbtn" id="sheetx" style="margin-left:auto">done ✓</button></div>';
+    h+='<div class="edrow"><span class="edlab">root</span>'+ROOT_ORDER.map(p=>'<button class="qtab" style="display:inline-block" data-edr="'+p+'" aria-pressed="'+(p===it.p)+'">'+rootBig(p)+'</button>').join('')+'</div>';
+    h+='<div class="edrow"><span class="edlab">family</span>'+FAMILIES.map(f=>'<button class="qtab" style="display:inline-block" data-edf="'+f.id+'" aria-pressed="'+(f.id===fam.id)+'">'+f.n+'</button>').join('')+'</div>';
+    h+='<div class="edrow"><span class="edlab">quality</span>'+fam.q.map(qq=>'<button class="qtab" style="display:inline-block" data-edq="'+qq+'" aria-pressed="'+(qq===it.q)+'">'+chordSym(it.p,QBY[qq])+'</button>').join('')+'</div>';
+    h+='</div></div>';
+  }
   vPlay.innerHTML=h;
 }
 vPlay.addEventListener('click',e=>{
   const sec=e.target.closest('[data-sec]'); if(sec){ playSel=+sec.dataset.sec; scSel=null; renderPlay(); return; }
   const sp=e.target.closest('.scpick'); if(sp){ const a=sp.dataset.sc.split('|'); scSel={r:+a[0], sid:a[1]}; renderPlay(); return; }
-  const mv=e.target.closest('[data-mv]');
-  if(mv){ const a=mv.dataset.mv.split('|'); const i=+a[0], j=i+(+a[1]);
-    if(j>=0&&j<prog.length){ const t=prog[i]; prog[i]=prog[j]; prog[j]=t; saveProg(); renderPlay(); renderProg(); } return; }
+  const ed=e.target.closest('[data-ed]');
+  if(ed){ editIdx=+ed.dataset.ed; sheetIdx=null; renderPlay(); return; }
+  const edr=e.target.closest('[data-edr]');
+  if(edr){ const it=prog[editIdx]; if(it){ it.p=+edr.dataset.edr; it.v=0; saveProg(); renderPlay(); renderProg(); } return; }
+  const edf=e.target.closest('[data-edf]');
+  if(edf){ const it=prog[editIdx]; if(it){ const f=FAMILIES.find(x=>x.id===edf.dataset.edf); it.q=f.q[0]; it.v=0; saveProg(); renderPlay(); renderProg(); } return; }
+  const edq=e.target.closest('[data-edq]');
+  if(edq){ const it=prog[editIdx]; if(it){ it.q=edq.dataset.edq; it.v=0; saveProg(); renderPlay(); renderProg(); } return; }
   const del=e.target.closest('[data-del]');
   if(del){ prog.splice(+del.dataset.del,1); saveProg(); playSel=0; renderPlay(); renderProg(); return; }
   const bl=e.target.closest('[data-blbl]');
   if(bl){ const it=prog[+bl.dataset.blbl]; it.label=BRKLABELS[(BRKLABELS.indexOf(it.label)+1+BRKLABELS.length)%BRKLABELS.length]; saveProg(); renderPlay(); renderProg(); return; }
-  const cp=e.target.closest('[data-ci]'); if(cp){ sheetIdx=+cp.dataset.ci; renderPlay(); return; }
+  const cp=e.target.closest('[data-ci]'); if(cp){ sheetIdx=+cp.dataset.ci; editIdx=null; renderPlay(); return; }
   const vs=e.target.closest('[data-vsel]');
   if(vs){ if(sheetIdx!==null&&prog[sheetIdx]) prog[sheetIdx].v=+vs.dataset.vsel; sheetIdx=null; saveProg(); renderPlay(); renderProg(); return; }
-  if(e.target.id==='sheetbg'||e.target.closest('#sheetx')){ sheetIdx=null; renderPlay(); return; }
+  if(e.target.id==='sheetbg'||e.target.closest('#sheetx')){ sheetIdx=null; editIdx=null; renderPlay(); return; }
   if(e.target.closest('#paddc')){
     prog.push({t:'c', p:+document.getElementById('par').value, q:document.getElementById('paq').value, v:0});
     saveProg(); renderPlay(); renderProg(); return;
@@ -1421,6 +1446,54 @@ vPlay.addEventListener('change',e=>{
     renderPlay();
   }
 });
+
+/* drag-and-drop reordering (pointer events — mouse and touch) */
+let drag=null;
+function dragMarksClear(){ vPlay.querySelectorAll('.dropbefore,.dropafter').forEach(x=>x.classList.remove('dropbefore','dropafter')); }
+function dragMark(e){
+  dragMarksClear();
+  const el=document.elementFromPoint(e.clientX,e.clientY);
+  const card=el&&el.closest('#v-play .songrow > *');
+  if(!card){ drag.to=null; return; }
+  const idx=[...card.parentElement.children].indexOf(card);
+  if(idx===drag.i){ drag.to=null; return; }
+  const rc=card.getBoundingClientRect();
+  drag.after = e.clientX > rc.left + rc.width/2;
+  drag.to=idx;
+  card.classList.add(drag.after?'dropafter':'dropbefore');
+}
+vPlay.addEventListener('pointerdown',e=>{
+  const hnd=e.target.closest('.dh'); if(!hnd) return;
+  e.preventDefault();
+  const i=+hnd.dataset.dh, it=prog[i]; if(!it) return;
+  const g=document.createElement('div'); g.className='dragghost';
+  g.textContent='⠿ '+(it.t==='b'?it.label:chordSym(it.p,QBY[it.q]));
+  document.body.appendChild(g);
+  drag={i, g, to:null, after:false};
+  const src=vPlay.querySelector('.songrow')?.children[i]; if(src) src.classList.add('dragging');
+  g.style.left=(e.clientX+10)+'px'; g.style.top=(e.clientY-14)+'px';
+  try{ hnd.setPointerCapture(e.pointerId); }catch(x){}
+});
+vPlay.addEventListener('pointermove',e=>{
+  if(!drag) return;
+  e.preventDefault();
+  drag.g.style.left=(e.clientX+10)+'px'; drag.g.style.top=(e.clientY-14)+'px';
+  dragMark(e);
+});
+function dragEnd(commit){
+  if(!drag) return;
+  if(commit && drag.to!==null){
+    let to=drag.to+(drag.after?1:0);
+    const [it]=prog.splice(drag.i,1);
+    if(to>drag.i) to--;
+    prog.splice(to,0,it);
+    saveProg(); renderProg();
+  }
+  dragMarksClear(); drag.g.remove(); drag=null;
+  renderPlay();
+}
+vPlay.addEventListener('pointerup',()=>dragEnd(true));
+vPlay.addEventListener('pointercancel',()=>dragEnd(false));
 
 /* ================= header controls ================= */
 const nav=document.getElementById('rootnav');
