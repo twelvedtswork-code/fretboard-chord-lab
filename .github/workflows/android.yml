@@ -38,7 +38,9 @@ jobs:
         env:
           BUBBLEWRAP_KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
           BUBBLEWRAP_KEY_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
-        run: npx -y @bubblewrap/cli build --skipPwaValidation
+        run: |
+          printf 'y\ny\ny\n' | npx -y @bubblewrap/cli update --skipVersionUpgrade
+          printf 'y\ny\ny\n' | npx -y @bubblewrap/cli build --skipPwaValidation
       - name: Publish assetlinks.json for fullscreen verification
         run: |
           mkdir -p .well-known
