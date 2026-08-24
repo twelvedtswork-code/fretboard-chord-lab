@@ -282,8 +282,8 @@
   .vsel.on{border-color:var(--accent); box-shadow:0 0 0 1px var(--accent)}
   .vsel .tab{display:block; font-family:"IBM Plex Mono",Consolas,monospace; font-size:10.5px; color:var(--faint)}
   .vsel .ccv{margin-top:2px}
-  .dh{cursor:grab; touch-action:none; user-select:none}
-  .dh:active{cursor:grabbing}
+  .ccard, .brk{cursor:grab; user-select:none; -webkit-user-select:none}
+  .ccard:active, .brk:active{cursor:grabbing}
   .ccard.dragging, .brk.dragging{opacity:.35}
   .dropbefore{box-shadow:-4px 0 0 0 var(--accent)}
   .dropafter{box-shadow:4px 0 0 0 var(--accent)}
@@ -1352,19 +1352,19 @@ function renderPlay(){
   const secs=sectionsOf();
   if(playSel>=secs.length) playSel=0;
   let h='<div class="khead"><h2>Play</h2><span class="qword">your song — reorder it, re-voice it, section it, then find the solo scale</span></div>';
-  h+='<div class="grp"><h4>The song <span>· drag ⠿ to reorder · tap a card for voicings · ✎ change the chord · × remove · tap a section name to change it</span></h4>';
+  h+='<div class="grp"><h4>The song <span>· drag a card to reorder (hold a moment on touch) · tap a card for voicings · ✎ change the chord · × remove · tap a section name to change it</span></h4>';
   if(!prog.length) h+='<div class="fempty">no chords yet — add below, or tap “+ progression” on any chord page</div>';
   h+='<div class="songrow">';
   prog.forEach((it,i)=>{
     if(it.t==='b'){
       h+='<div class="brk"><button class="brklbl" data-blbl="'+i+'">'+it.label+'</button>'
-        +'<span class="cctl"><button class="dh" data-dh="'+i+'" aria-label="drag to reorder">⠿</button><button data-del="'+i+'" aria-label="remove">×</button></span></div>';
+        +'<span class="cctl"><button data-del="'+i+'" aria-label="remove">×</button></span></div>';
     } else {
       const v=chosenV(it), sym=chordSym(it.p,QBY[it.q]);
       h+='<div class="ccard"><button class="cpick" data-ci="'+i+'" title="choose a voicing">'
         +dia(it.p,v.fr,sym+' '+v.label,undefined,QBY[it.q].lbl)
         +'<span class="ccname">'+sym+'</span><span class="ccv">'+v.label+' ▾</span></button>'
-        +'<span class="cctl"><button class="dh" data-dh="'+i+'" aria-label="drag to reorder">⠿</button><button class="pl" data-t="'+tabStr(v.fr)+'" aria-label="hear it">♪</button><button data-ed="'+i+'" aria-label="change chord">✎</button><button data-del="'+i+'" aria-label="remove">×</button></span></div>';
+        +'<span class="cctl"><button class="pl" data-t="'+tabStr(v.fr)+'" aria-label="hear it">♪</button><button data-ed="'+i+'" aria-label="change chord">✎</button><button data-del="'+i+'" aria-label="remove">×</button></span></div>';
     }
   });
   h+='</div>';
@@ -1414,6 +1414,7 @@ function renderPlay(){
   vPlay.innerHTML=h;
 }
 vPlay.addEventListener('click',e=>{
+  if(dragMoved){ dragMoved=false; return; }   /* swallow the click a finished drag leaves behind */
   const sec=e.target.closest('[data-sec]'); if(sec){ playSel=+sec.dataset.sec; scSel=null; renderPlay(); return; }
   const sp=e.target.closest('.scpick'); if(sp){ const a=sp.dataset.sc.split('|'); scSel={r:+a[0], sid:a[1]}; renderPlay(); return; }
   const ed=e.target.closest('[data-ed]');
@@ -1447,8 +1448,10 @@ vPlay.addEventListener('change',e=>{
   }
 });
 
-/* drag-and-drop reordering (pointer events — mouse and touch) */
-let drag=null;
+/* drag-and-drop reordering — the whole card is the handle.
+   Mouse: a few px of movement starts the drag (plain clicks pass through).
+   Touch: hold ~220ms to lift, then drag; early movement = normal page scroll. */
+let drag=null, dragPend=null, dragMoved=false;
 function dragMarksClear(){ vPlay.querySelectorAll('.dropbefore,.dropafter').forEach(x=>x.classList.remove('dropbefore','dropafter')); }
 function dragMark(e){
   dragMarksClear();
@@ -1462,25 +1465,41 @@ function dragMark(e){
   drag.to=idx;
   card.classList.add(drag.after?'dropafter':'dropbefore');
 }
-vPlay.addEventListener('pointerdown',e=>{
-  const hnd=e.target.closest('.dh'); if(!hnd) return;
-  e.preventDefault();
-  const i=+hnd.dataset.dh, it=prog[i]; if(!it) return;
+function startDrag(i,x,y){
+  const it=prog[i]; if(!it) return;
   const g=document.createElement('div'); g.className='dragghost';
   g.textContent='⠿ '+(it.t==='b'?it.label:chordSym(it.p,QBY[it.q]));
   document.body.appendChild(g);
   drag={i, g, to:null, after:false};
   const src=vPlay.querySelector('.songrow')?.children[i]; if(src) src.classList.add('dragging');
-  g.style.left=(e.clientX+10)+'px'; g.style.top=(e.clientY-14)+'px';
-  try{ hnd.setPointerCapture(e.pointerId); }catch(x){}
+  g.style.left=(x+10)+'px'; g.style.top=(y-14)+'px';
+}
+function pendClear(){ if(dragPend){ if(dragPend.timer) clearTimeout(dragPend.timer); dragPend=null; } }
+vPlay.addEventListener('pointerdown',e=>{
+  const card=e.target.closest('#v-play .songrow > *');
+  if(!card || e.target.closest('.cctl') || e.target.closest('.brklbl')) return;
+  const i=[...card.parentElement.children].indexOf(card);
+  dragPend={i, x:e.clientX, y:e.clientY, touch:e.pointerType!=='mouse', timer:null};
+  if(dragPend.touch){
+    dragPend.timer=setTimeout(()=>{ if(dragPend){ startDrag(dragPend.i, dragPend.x, dragPend.y); pendClear(); } }, 220);
+  }
+  try{ card.setPointerCapture(e.pointerId); }catch(x){}
 });
 vPlay.addEventListener('pointermove',e=>{
-  if(!drag) return;
-  e.preventDefault();
-  drag.g.style.left=(e.clientX+10)+'px'; drag.g.style.top=(e.clientY-14)+'px';
-  dragMark(e);
+  if(drag){
+    e.preventDefault();
+    drag.g.style.left=(e.clientX+10)+'px'; drag.g.style.top=(e.clientY-14)+'px';
+    dragMark(e); return;
+  }
+  if(!dragPend) return;
+  const d=Math.hypot(e.clientX-dragPend.x, e.clientY-dragPend.y);
+  if(dragPend.touch){ if(d>12) pendClear(); }               /* moved early on touch = a scroll, not a drag */
+  else if(d>6){ const i=dragPend.i; pendClear(); startDrag(i, e.clientX, e.clientY); }
 });
+vPlay.addEventListener('touchmove',e=>{ if(drag) e.preventDefault(); },{passive:false});
+vPlay.addEventListener('contextmenu',e=>{ if(drag||dragPend) e.preventDefault(); });
 function dragEnd(commit){
+  pendClear();
   if(!drag) return;
   if(commit && drag.to!==null){
     let to=drag.to+(drag.after?1:0);
@@ -1490,6 +1509,7 @@ function dragEnd(commit){
     saveProg(); renderProg();
   }
   dragMarksClear(); drag.g.remove(); drag=null;
+  if(commit){ dragMoved=true; setTimeout(()=>{ dragMoved=false; },350); }  /* swallow the drag's own click, then self-expire */
   renderPlay();
 }
 vPlay.addEventListener('pointerup',()=>dragEnd(true));
