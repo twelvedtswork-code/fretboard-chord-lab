@@ -75,10 +75,10 @@
   .lblsw button{border:0; background:var(--chip); color:var(--muted); padding:3px 12px; font-size:12.5px; cursor:pointer; font-family:inherit}
   .lblsw button.on{background:var(--chip-on); color:var(--accent-ink)}
   button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible{outline:2px solid var(--accent); outline-offset:2px}
-  body[data-mode="drill"] nav.roots, body[data-mode="practice"] nav.roots{display:none}
+  body[data-mode="drill"] nav.roots, body[data-mode="practice"] nav.roots, body[data-mode="find"] nav.roots{display:none}
   body:not([data-mode="chords"]) .qtab{display:none}
   body:not([data-mode="keys"]) .keytog{display:none}
-  body[data-mode="practice"] .lblsw{display:none}
+  body[data-mode="practice"] .lblsw, body[data-mode="find"] .lblsw{display:none}
 
   /* ---------- main ---------- */
   main{max-width:1180px; margin:0 auto; padding:16px 14px 60px}
@@ -87,7 +87,7 @@
     padding:10px 16px; margin-bottom:18px; box-shadow:var(--shadow);
     display:flex; flex-wrap:wrap; gap:5px 24px; font-size:13px; color:var(--muted); align-items:center;
   }
-  body[data-mode="drill"] .legend, body[data-mode="practice"] .legend{display:none}
+  body[data-mode="drill"] .legend, body[data-mode="practice"] .legend, body[data-mode="find"] .legend{display:none}
   .legend .k{display:inline-flex; align-items:center; gap:7px}
   .mono{font-family:"IBM Plex Mono",Consolas,monospace}
   .swatch{width:15px;height:15px;border-radius:50%;background:var(--dot);display:inline-block}
@@ -97,6 +97,7 @@
   body[data-mode="keys"] #v-keys{display:block}
   body[data-mode="drill"] #v-drill{display:block}
   body[data-mode="practice"] #v-practice{display:block}
+  body[data-mode="find"] #v-find{display:block}
 
   article.chord{margin-top:4px}
   .chead{display:flex; align-items:baseline; gap:14px; flex-wrap:wrap; border-bottom:1px solid var(--line-soft); padding-bottom:8px}
@@ -130,10 +131,12 @@
   figure.vc figcaption .tab{display:block; font-family:"IBM Plex Mono",Consolas,monospace; font-size:10.5px; color:var(--faint); margin-top:1px}
   figure.vc figcaption .note{display:block; color:var(--faint); font-size:10.5px; font-style:italic}
   .pl{
-    position:absolute; top:6px; right:6px; width:24px; height:24px; border-radius:50%;
-    border:1px solid var(--line); background:var(--surface2); color:var(--muted); cursor:pointer; font-size:12px; line-height:1; padding:0;
+    width:22px; height:22px; border-radius:50%; flex:0 0 auto;
+    border:1px solid var(--line); background:var(--surface2); color:var(--muted); cursor:pointer; font-size:11px; line-height:1; padding:0;
   }
   .pl:hover{color:var(--accent-ink); background:var(--accent); border-color:var(--accent)}
+  .capline{display:flex; align-items:center; justify-content:center; gap:6px}
+  .capline b{display:inline}
   .neckwrap{overflow-x:auto; background:var(--surface); border:1px solid var(--line); border-radius:9px; padding:8px 6px; box-shadow:var(--shadow)}
 
   /* diagram svg */
@@ -227,6 +230,21 @@
   .omclog{margin:10px 0 0; padding:0; list-style:none; color:var(--muted); font-size:12.5px}
   .omclog li{border-top:1px solid var(--line-soft); padding:3px 0}
   .omclog b{color:var(--text)}
+
+  /* find mode */
+  .fctl{display:flex; flex-wrap:wrap; gap:8px; align-items:center; margin:12px 0}
+  .fg{display:grid; grid-template-columns:44px repeat(6,42px); gap:3px; justify-content:start}
+  .fgs,.fgl{display:flex; align-items:center; justify-content:center; font-size:11px; color:var(--faint); font-family:"IBM Plex Mono",Consolas,monospace}
+  .fgc{height:36px; border:1px solid var(--line-soft); background:var(--surface); border-radius:7px; cursor:pointer; display:flex; align-items:center; justify-content:center; padding:0; color:var(--faint); font-size:13px; font-family:inherit}
+  .fgc:hover{border-color:var(--accent)}
+  .fgc.on{background:var(--accent-soft); border-color:var(--accent)}
+  .fgm{height:30px}
+  .fgd{width:24px; height:24px; border-radius:50%; background:var(--accent); color:var(--accent-ink); font-size:11px; font-weight:700; display:flex; align-items:center; justify-content:center}
+  .fline{margin:10px 0 2px; font-size:13px; color:var(--muted); font-family:"IBM Plex Mono",Consolas,monospace}
+  .fnotes{color:var(--muted); font-size:13.5px; margin:4px 0}
+  .fempty{color:var(--faint); font-size:14px; margin:14px 0}
+  .frslash{color:var(--muted); font-size:15px}
+  .fres .rn{color:var(--accent)}
 
   footer{max-width:1180px; margin:0 auto; padding:0 14px 70px; color:var(--muted); font-size:13.5px}
   footer .card{background:var(--surface); border:1px solid var(--line); border-radius:10px; padding:14px 18px; box-shadow:var(--shadow)}
@@ -326,6 +344,7 @@
   <div id="v-chords"></div>
   <div id="v-keys"></div>
   <div id="v-drill"></div>
+  <div id="v-find"></div>
   <div id="v-practice"></div>
 </main>
 
@@ -751,8 +770,9 @@ const cardHTML=(p,q,v,extra,sp)=>{
   const sym=(sp===undefined?rootBig(p):nName(p,sp))+q.suf;
   const aria=sym+' '+v.label+', frets '+tabStr(v.frets);
   return '<figure class="vc">'+dia(p,v.frets,aria,sp,q.lbl)
-    +'<button class="pl" data-t="'+tabStr(v.frets)+'" aria-label="hear '+sym+'">♪</button>'
-    +'<figcaption>'+(extra||'')+'<b>'+v.label+'</b><span class="tab">'+tabStr(v.frets)+'</span>'
+    +'<figcaption>'+(extra||'')
+    +'<span class="capline"><b>'+v.label+'</b><button class="pl" data-t="'+tabStr(v.frets)+'" aria-label="hear '+sym+'">♪</button></span>'
+    +'<span class="tab">'+tabStr(v.frets)+'</span>'
     +(v.note?'<span class="note">'+v.note+'</span>':'')+'</figcaption></figure>';
 };
 
@@ -1040,11 +1060,85 @@ function omcTap(){
   document.getElementById('otap').textContent='TAP ('+omc.count+')';
 }
 
+/* ================= find mode (reverse lookup) ================= */
+const vFind=document.getElementById('v-find');
+const find={fr:[null,null,null,null,null,null], start:1};
+function analyzeGrip(fr){
+  const played=[]; fr.forEach((f,i)=>{ if(f!==null) played.push(TUN[i]+f); });
+  const S=new Set(played.map(pc));
+  if(played.length<2) return {notes:[], bass:null, res:[], power:false};
+  const bass=pc(Math.min(...played));
+  const eq=(A,B)=>A.size===B.size&&[...A].every(x=>B.has(x));
+  const sub=(A,B)=>[...A].every(x=>B.has(x));
+  const res=[];
+  for(let root=0;root<12;root++) for(const q of QUALS){
+    const ivS=new Set(q.iv.map(x=>pc(root+x)));
+    const ivFS=new Set(q.ivF.map(x=>pc(root+x)));
+    if(eq(S,ivS)||eq(S,ivFS)){ res.push({p:root,qid:q.id,kind:'exact',miss:null}); continue; }
+    if(S.has(root)&&sub(S,ivFS)&&ivFS.size-S.size===1){
+      const m=[...ivFS].find(x=>!S.has(x));
+      res.push({p:root,qid:q.id,kind:'near',miss:INT[pc(m-root)]});
+    }
+  }
+  res.sort((a,b)=>((a.kind==='near')-(b.kind==='near')) || ((a.p!==bass)-(b.p!==bass)) || (QUALS.findIndex(q=>q.id===a.qid)-QUALS.findIndex(q=>q.id===b.qid)));
+  const notes=[...new Set(played.slice().sort((a,b)=>a-b).map(m=>NS[pc(m)]))];
+  return {notes, bass, res:res.slice(0,8), power: S.size===2&&S.has(pc(bass+7))};
+}
+function renderFind(){
+  const fr=find.fr, s=find.start;
+  let h='<div class="khead"><h2>Name that chord</h2><span class="qword">tap your grip — strings run low E → high e</span></div>';
+  h+='<div class="fctl"><button class="chipbtn" data-fa="dn">‹ lower</button><span class="fgl">frets '+s+'–'+(s+6)+'</span><button class="chipbtn" data-fa="up">higher ›</button><button class="chipbtn" data-fa="clr">clear</button><button class="chipbtn" data-fa="ply">♪ hear it</button></div>';
+  h+='<div class="fg"><span></span>'+['E','A','D','G','B','e'].map(n=>'<span class="fgs">'+n+'</span>').join('');
+  h+='<span class="fgl">open</span>';
+  for(let i=0;i<6;i++){
+    const st=fr[i]===null?'×':(fr[i]===0?'○':'·');
+    h+='<button class="fgc fgm'+(fr[i]===0?' on':'')+'" data-fm="'+i+'" aria-label="toggle string '+(6-i)+' open or muted">'+st+'</button>';
+  }
+  for(let f=s;f<s+7;f++){
+    h+='<span class="fgl">'+f+'</span>';
+    for(let i=0;i<6;i++){
+      const on=fr[i]===f;
+      h+='<button class="fgc'+(on?' on':'')+'" data-fi="'+i+'" data-ff="'+f+'" aria-label="string '+(6-i)+' fret '+f+'">'+(on?'<span class="fgd">'+NS[pc(TUN[i]+f)]+'</span>':'')+'</button>';
+    }
+  }
+  h+='</div><div class="fline">'+tabStr(fr)+'</div>';
+  const a=analyzeGrip(fr);
+  if(a.notes.length) h+='<div class="fnotes">sounding: '+a.notes.join(' · ')+'</div>';
+  if(a.power) h+='<div class="fnotes">that’s a power chord (R–5) — deliberately ambiguous, so several names claim it:</div>';
+  if(!a.res.length){
+    h+='<div class="fempty">'+(a.notes.length<2?'tap at least two strings and I’ll start guessing':'no clean match — try adding or removing a note')+'</div>';
+  } else {
+    h+='<div class="fam">';
+    for(const x of a.res){
+      const q=QBY[x.qid];
+      const slash=(x.kind==='exact'&&a.bass!==x.p)?'<span class="frslash">/'+nName(a.bass,x.p)+'</span>':'';
+      h+='<button class="famcard fres" data-p="'+x.p+'" data-q="'+x.qid+'"><span class="rn">'+(x.kind==='exact'?'exact':'no '+x.miss)+'</span><span class="cs">'+rootBig(x.p)+q.suf+slash+'</span><span class="c7">'+q.word+'</span></button>';
+    }
+    h+='</div>';
+  }
+  vFind.innerHTML=h;
+}
+vFind.addEventListener('click',e=>{
+  const fa=e.target.closest('[data-fa]');
+  if(fa){
+    const k=fa.dataset.fa;
+    if(k==='ply'){ pluckChord(find.fr); return; }
+    if(k==='dn') find.start=Math.max(1,find.start-1);
+    if(k==='up') find.start=Math.min(18,find.start+1);
+    if(k==='clr') find.fr=[null,null,null,null,null,null];
+    renderFind(); return;
+  }
+  const fm=e.target.closest('[data-fm]');
+  if(fm){ const i=+fm.dataset.fm; find.fr[i]=find.fr[i]===null?0:null; renderFind(); return; }
+  const fc=e.target.closest('[data-fi]');
+  if(fc){ const i=+fc.dataset.fi, f=+fc.dataset.ff; find.fr[i]=find.fr[i]===f?null:f; renderFind(); return; }
+});
+
 /* ================= header controls ================= */
 const nav=document.getElementById('rootnav');
 const ctrls=document.getElementById('ctrls');
 const modesEl=document.getElementById('modes');
-const MODES=[['chords','Chords'],['keys','Keys'],['drill','Drill'],['practice','Practice']];
+const MODES=[['chords','Chords'],['keys','Keys'],['find','Find'],['drill','Drill'],['practice','Practice']];
 for(const m of MODES){
   const b=document.createElement('button');
   b.textContent=m[1]; b.dataset.m=m[0];
@@ -1088,6 +1182,7 @@ function setMode(m,fromHash){
   modesEl.querySelectorAll('button').forEach(b=>b.classList.toggle('on',b.dataset.m===m));
   if(m==='chords'){ renderChords(); if(!fromHash) setHash(SLUG[cur.p]+'-'+cur.q); }
   if(m==='keys'){ renderKeys(); if(!fromHash) setHash('key-'+SLUG[key.p]+(key.minor?'-m':'')); }
+  if(m==='find'){ renderFind(); if(!fromHash) setHash('find'); }
   if(m==='drill'){ renderDrill(); if(!fromHash) setHash('drill'); }
   if(m==='practice'){ if(!vPractice.innerHTML) renderPractice(); if(!fromHash) setHash('practice'); }
 }
@@ -1155,6 +1250,7 @@ function parseRoute(s){
   s=(s||'').replace(/^#/,'');
   if(s==='drill') return {mode:'drill'};
   if(s==='practice') return {mode:'practice'};
+  if(s==='find') return {mode:'find'};
   let m=/^key-([A-G][bs]?)(-m)?$/.exec(s);
   if(m && UNSLUG[m[1]]!==undefined) return {mode:'keys', p:UNSLUG[m[1]], minor:!!m[2]};
   m=/^([A-G][bs]?)-([a-z0-9]+)$/.exec(s);
