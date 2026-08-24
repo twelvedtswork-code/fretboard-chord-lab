@@ -111,6 +111,8 @@
     border:1px solid var(--accent); border-radius:999px; padding:3px 13px; background:var(--accent-soft); font-family:inherit;
   }
   .rel:hover{background:var(--accent); color:var(--accent-ink)}
+  .rel.backc{border-color:var(--line); color:var(--muted); background:var(--surface2)}
+  .rel.backc:hover{border-color:var(--accent); color:var(--text); background:var(--surface2)}
   .rels{margin-left:auto; display:flex; gap:6px; flex-wrap:wrap; align-items:center}
   .khead .rel{margin-left:auto}
   body:not([data-mode="chords"]) #qualrow{display:none}
@@ -350,7 +352,7 @@
     <span class="k"><span class="mono">×</span> muted / unused</span>
     <span class="k"><span class="mono">5fr</span> = starts at fret 5</span>
     <span class="k"><span class="mono">♪</span> = hear it</span>
-    <span class="k kbhint">keys: <span class="mono">a–g</span> root (again for ♯) · <span class="mono">← →</span> quality</span>
+    <span class="k kbhint">keys: <span class="mono">a–g</span> root (again for ♯) · <span class="mono">← →</span> quality · <span class="mono">⌫</span> previous chord</span>
     <span class="k swipehint">swipe ⇄ to change quality</span>
   </div>
   <div id="v-chords"></div>
@@ -890,7 +892,9 @@ function renderChords(){
   if(q.id==='d7') rel(6,'d7','tritone twin: '+sym(6,'d7'));
   if(q.id==='dim7') [3,6,9].forEach(o=>rel(o,'dim7','= '+sym(o,'dim7')));
   if(q.id==='aug') [4,8].forEach(o=>rel(o,'aug','= '+sym(o,'aug')));
-  h+='<div class="rels">'+rels.map(x=>'<button class="rel" data-p="'+x.p+'" data-q="'+x.q+'">'+x.t+' →</button>').join('')+'<button class="rel" id="addprog">+ progression</button></div>';
+  const back=hist.length?hist[hist.length-1]:null;
+  h+='<div class="rels">'+(back?'<button class="rel backc" id="backchip" title="back to the previous chord">← '+chordSym(back.p,QBY[back.q])+'</button>':'')
+    +rels.map(x=>'<button class="rel" data-p="'+x.p+'" data-q="'+x.q+'">'+x.t+' →</button>').join('')+'<button class="rel" id="addprog">+ progression</button></div>';
   h+='</div>';
   const nx=NEXTS[q.id]||NEXTS[NEXT_ALIAS[q.id]];
   if(nx){
@@ -924,13 +928,19 @@ function renderChords(){
     qr.appendChild(b);
   }
 }
-function setChord(p,q,fromHash){
+let hist=[];
+function setChord(p,q,fromHash,noPush){
+  if(!noPush && !fromHash && (cur.p!==+p || cur.q!==q)){
+    hist.push({p:cur.p, q:cur.q});
+    if(hist.length>30) hist.shift();
+  }
   cur={p:+p, q:q};
   renderChords();
   store.set('fcl-last', SLUG[cur.p]+'-'+cur.q);
   if(!fromHash) setHash(SLUG[cur.p]+'-'+cur.q);
   scrollTo({top:0});
 }
+function goBack(){ const t=hist.pop(); if(t) setChord(t.p, t.q, false, true); }
 
 /* ================= keys mode ================= */
 const vKeys=document.getElementById('v-keys');
@@ -1323,6 +1333,7 @@ function setHash(h){ try{ if(location.hash!=='#'+h) location.hash=h; }catch(e){}
 document.addEventListener('click',e=>{
   const pl=e.target.closest('.pl');
   if(pl){ pluckChord(parseTab(pl.dataset.t)); return; }
+  if(e.target.closest('#backchip')){ goBack(); return; }
   if(e.target.closest('#addprog')){
     prog.push({p:cur.p,q:cur.q}); if(prog.length>12) prog.shift();
     store.set('fcl-prog',JSON.stringify(prog)); renderProg(); return;
@@ -1410,7 +1421,8 @@ addEventListener('keydown',e=>{
   if(['INPUT','SELECT','TEXTAREA','BUTTON'].includes(e.target.tagName)) return;
   const k=e.key.toLowerCase();
   if(mode==='chords'){
-    if(NAT[k]!==undefined){ const n=NAT[k]; setChord(cur.p===n&&SHARP_OF[n]!==undefined?SHARP_OF[n]:n, cur.q); }
+    if(e.key==='Backspace'){ e.preventDefault(); goBack(); }
+    else if(NAT[k]!==undefined){ const n=NAT[k]; setChord(cur.p===n&&SHARP_OF[n]!==undefined?SHARP_OF[n]:n, cur.q); }
     else if(e.key==='ArrowRight'||e.key==='ArrowLeft'){
       e.preventDefault();
       const fam=famOfQ(cur.q), i=fam.q.indexOf(cur.q);
