@@ -1,0 +1,4 @@
+signing.keystore
+keystore.b64
+*.apk
+*.aab
