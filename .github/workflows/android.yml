@@ -18,10 +18,16 @@ jobs:
         run: printf '%s' "${{ secrets.ANDROID_KEYSTORE_B64 }}" | tr -d '\r\n ' | base64 -d > signing.keystore
       - name: Point bubblewrap at the runner toolchain
         run: |
-          SDK="${ANDROID_HOME:-${ANDROID_SDK_ROOT:-/usr/local/lib/android/sdk}}"
-          echo "JAVA_HOME=$JAVA_HOME"
-          echo "SDK=$SDK"
-          ls "$SDK" || true
+          REAL="${ANDROID_HOME:-${ANDROID_SDK_ROOT:-/usr/local/lib/android/sdk}}"
+          SDK="$HOME/android-sdk"
+          mkdir -p "$SDK/cmdline-tools"
+          CLT=$(ls "$REAL/cmdline-tools" | head -1)
+          ln -sfn "$REAL/cmdline-tools/$CLT" "$SDK/cmdline-tools/latest"
+          ln -sfn "$REAL/cmdline-tools/$CLT" "$SDK/tools"
+          for d in build-tools platforms platform-tools licenses ndk cmake extras; do
+            [ -e "$REAL/$d" ] && ln -sfn "$REAL/$d" "$SDK/$d"
+          done
+          echo "cmdline-tools source: $CLT"; ls -la "$SDK" "$SDK/cmdline-tools"
           mkdir -p ~/.bubblewrap
           printf '{"jdkPath":"%s","androidSdkPath":"%s"}' "$JAVA_HOME" "$SDK" > ~/.bubblewrap/config.json
           cat ~/.bubblewrap/config.json
