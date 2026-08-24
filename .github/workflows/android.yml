@@ -15,7 +15,7 @@ jobs:
           distribution: temurin
           java-version: '17'
       - name: Restore keystore
-        run: echo "${{ secrets.ANDROID_KEYSTORE_B64 }}" | base64 -d > signing.keystore
+        run: printf '%s' "${{ secrets.ANDROID_KEYSTORE_B64 }}" | tr -d '\r\n ' | base64 -d > signing.keystore
       - name: Point bubblewrap at the runner toolchain
         run: |
           mkdir -p ~/.bubblewrap
