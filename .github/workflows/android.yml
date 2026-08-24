@@ -38,6 +38,8 @@ jobs:
         env:
           BUBBLEWRAP_KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
           BUBBLEWRAP_KEY_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+          ANDROID_HOME: /home/runner/android-sdk
+          ANDROID_SDK_ROOT: /home/runner/android-sdk
         run: |
           printf 'y\ny\ny\n' | npx -y @bubblewrap/cli update --skipVersionUpgrade
           printf 'y\ny\ny\n' | npx -y @bubblewrap/cli build --skipPwaValidation
