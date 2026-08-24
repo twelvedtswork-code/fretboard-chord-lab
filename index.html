@@ -312,6 +312,17 @@
     border-radius:999px; padding:8px 14px; cursor:pointer; font-size:13px; box-shadow:var(--shadow); font-family:inherit;
   }
   #toTop.show{display:block}
+  #gate{position:fixed; inset:0; z-index:100; background:var(--bg); display:flex; align-items:center; justify-content:center; padding:24px}
+  #gate[hidden]{display:none}
+  .gatecard{max-width:420px; text-align:center; display:flex; flex-direction:column; gap:14px; align-items:center}
+  .gatelogo{font-size:40px; color:var(--accent); line-height:1}
+  .gatecard h2{font-family:"Barlow Condensed",sans-serif; font-weight:700; font-size:40px; margin:0; line-height:1.05}
+  .gatecard .tag{color:var(--muted); font-size:15px; margin:0}
+  .gatebtn{width:100%; max-width:320px; padding:14px 20px; border-radius:12px; font-size:16.5px; font-weight:700; cursor:pointer; font-family:inherit}
+  #gatein{border:1px solid var(--accent); background:var(--accent); color:var(--accent-ink)}
+  #gateguest{border:1px solid var(--line); background:var(--surface); color:var(--text)}
+  #gateguest:hover, #gatein:hover{filter:brightness(1.08)}
+  .gatenote{color:var(--faint); font-size:12.5px; margin:0; max-width:320px}
   .swipehint{display:none}
 
   /* ---------- mobile: app layout ---------- */
@@ -419,6 +430,17 @@
 </footer>
 
 <button id="toTop" aria-label="Back to top">↑ Top</button>
+
+<div id="gate" hidden>
+  <div class="gatecard">
+    <div class="gatelogo">●</div>
+    <h2>Fretboard Chord Lab</h2>
+    <p class="tag">every chord, every voicing — drills, songs, and solo maps in one practice room</p>
+    <button class="gatebtn" id="gatein" style="display:none">Sign in with Google</button>
+    <button class="gatebtn" id="gateguest">Continue as guest</button>
+    <p class="gatenote">sign in and your songs follow you to every device — guest keeps everything on this one</p>
+  </div>
+</div>
 
 <script>
 'use strict';
@@ -1349,9 +1371,11 @@ async function fbInit(){
     FB.auth=authM.getAuth(app);
     FB.db=fsM.getFirestore(app);
     FB.ready=true;
+    const gi=document.getElementById('gatein');
+    if(gi && !document.getElementById('gate').hidden) gi.style.display='';
     authM.onAuthStateChanged(FB.auth, async u=>{
       FB.user=u;
-      if(u){ await cloudPull(); }
+      if(u){ store.set('fcl-authed','1'); store.set('fcl-guest',''); gateHide(); await cloudPull(); }
       if(mode==='play') renderPlay();
     });
     try{ await authM.getRedirectResult(FB.auth); }catch(e){}
@@ -1553,7 +1577,7 @@ vPlay.addEventListener('click',e=>{
   }
   if(e.target.closest('#namecancel')){ naming=null; renderPlay(); return; }
   if(e.target.closest('#fbin')){ fbSignIn(); return; }
-  if(e.target.closest('#fbout')){ if(FB.ready){ try{ FB.m.signOut(FB.auth); }catch(x){} FB.user=null; FB.sync=''; renderPlay(); } return; }
+  if(e.target.closest('#fbout')){ if(FB.ready){ try{ FB.m.signOut(FB.auth); }catch(x){} FB.user=null; FB.sync=''; store.set('fcl-authed',''); store.set('fcl-guest',''); renderPlay(); gateShow(); } return; }
   if(e.target.closest('#slink')){
     const url=songLink(); const btn=e.target.closest('#slink');
     try{ navigator.clipboard.writeText(url).then(()=>{ btn.textContent='copied ✓'; setTimeout(()=>{ btn.textContent='copy song link'; },1500); },()=>{ window.prompt('copy this link:', url); }); }
@@ -1894,6 +1918,12 @@ addEventListener('scroll',()=>tt.classList.toggle('show',scrollY>700),{passive:t
 tt.addEventListener('click',()=>scrollTo({top:0}));
 
 renderProg();
+const gateEl=document.getElementById('gate');
+function gateShow(){ gateEl.hidden=false; const gi=document.getElementById('gatein'); if(gi) gi.style.display=FB.ready?'':'none'; }
+function gateHide(){ gateEl.hidden=true; }
+document.getElementById('gateguest').addEventListener('click',()=>{ store.set('fcl-guest','1'); gateHide(); });
+document.getElementById('gatein').addEventListener('click',()=>fbSignIn());
+if(store.get('fcl-guest')!=='1' && store.get('fcl-authed')!=='1') gateShow();
 fbInit();
 key=getJ('fcl-key',{p:9,minor:false});
 const bootR=parseRoute(location.hash);
