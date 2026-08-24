@@ -1327,11 +1327,79 @@ const SCALES=[
   {id:'hmin', n:'Harmonic minor',   iv:[0,2,3,5,7,8,11]},
 ];
 let playSel=0, sheetIdx=null, editIdx=null, scSel=null, naming=null;
+/* --- cloud sync (Firebase — activates only where the SDK can load; everywhere else stays local-only) --- */
+const FBCFG={
+  apiKey:"AIzaSyDeTa0Gu9mn22Ix--WCwj8LVGxYfgc46NE",
+  authDomain:"fretboard-chord-lab.firebaseapp.com",
+  projectId:"fretboard-chord-lab",
+  storageBucket:"fretboard-chord-lab.firebasestorage.app",
+  messagingSenderId:"691575444345",
+  appId:"1:691575444345:web:4047f5908414e6ff0295a8"
+};
+const FB={ready:false, user:null, m:null, db:null, auth:null, sync:'', pushT:null};
+async function fbInit(){
+  try{
+    const [appM,authM,fsM]=await Promise.all([
+      import('https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js'),
+      import('https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js'),
+      import('https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js')
+    ]);
+    FB.m={...authM, ...fsM};
+    const app=appM.initializeApp(FBCFG);
+    FB.auth=authM.getAuth(app);
+    FB.db=fsM.getFirestore(app);
+    FB.ready=true;
+    authM.onAuthStateChanged(FB.auth, async u=>{
+      FB.user=u;
+      if(u){ await cloudPull(); }
+      if(mode==='play') renderPlay();
+    });
+    try{ await authM.getRedirectResult(FB.auth); }catch(e){}
+    if(mode==='play') renderPlay();
+  }catch(e){ /* no network / blocked host: cloud features simply stay hidden */ }
+}
+async function fbSignIn(){
+  if(!FB.ready) return;
+  const prov=new FB.m.GoogleAuthProvider();
+  try{ await FB.m.signInWithPopup(FB.auth, prov); }
+  catch(e){
+    try{ await FB.m.signInWithRedirect(FB.auth, prov); }catch(e2){ FB.sync='sign-in failed'; if(mode==='play') renderPlay(); }
+  }
+}
+async function cloudPull(){
+  if(!FB.user) return;
+  try{
+    FB.sync='syncing…';
+    const snap=await FB.m.getDoc(FB.m.doc(FB.db,'users',FB.user.uid));
+    const cloud=(snap.exists()&&Array.isArray(snap.data().songs))?snap.data().songs:[];
+    const byId={}; cloud.forEach(s=>{ if(s&&s.id) byId[s.id]=s; });
+    songs.forEach(s=>{ if(!byId[s.id]) byId[s.id]=s; });   /* local-only songs survive the merge */
+    songs=Object.values(byId).sort((a,b)=>(b.up||0)-(a.up||0)).slice(0,50);
+    store.set('fcl-songs',JSON.stringify(songs));
+    await cloudPushNow();
+    FB.sync='synced ✓';
+  }catch(e){ FB.sync='offline — will sync'; }
+  if(mode==='play') renderPlay();
+}
+async function cloudPushNow(){
+  if(!FB.user) return;
+  await FB.m.setDoc(FB.m.doc(FB.db,'users',FB.user.uid), {songs:songs, up:Date.now()}, {merge:true});
+}
+function cloudSchedule(){
+  if(!FB.user) return;
+  FB.sync='syncing…';
+  clearTimeout(FB.pushT);
+  FB.pushT=setTimeout(async()=>{
+    try{ await cloudPushNow(); FB.sync='synced ✓'; }
+    catch(e){ FB.sync='offline — will sync'; }
+    if(mode==='play'){ const el=document.getElementById('fbstat'); if(el) el.textContent=FB.sync; }
+  },1500);
+}
 /* --- song library (saved on this device) --- */
 let songs=getJ('fcl-songs',[]).filter(s=>s&&s.id&&s.name&&Array.isArray(s.items));
 let curSong=store.get('fcl-cursong')||null;
 const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-const saveSongs=()=>{ songs=songs.slice(0,50); store.set('fcl-songs',JSON.stringify(songs)); };
+const saveSongs=()=>{ songs=songs.slice(0,50); store.set('fcl-songs',JSON.stringify(songs)); cloudSchedule(); };
 function autoSaveSong(){
   if(!curSong) return;
   const s=songs.find(x=>x.id===curSong);
@@ -1393,7 +1461,13 @@ function renderPlay(){
       +'<button class="cctlb" data-ren="'+s.id+'" aria-label="rename">✎</button>'
       +'<button class="cctlb" data-sdel="'+s.id+'" aria-label="delete">×</button></span>').join('')+'</div>';
   }
-  h+='<div class="fctl"><button class="chipbtn" id="saveasbtn">save as new song</button><button class="chipbtn" id="newsongbtn">new empty song</button><button class="chipbtn" id="slink">copy song link</button></div>';
+  h+='<div class="fctl"><button class="chipbtn" id="saveasbtn">save as new song</button><button class="chipbtn" id="newsongbtn">new empty song</button><button class="chipbtn" id="slink">copy song link</button>';
+  if(FB.ready){
+    h+= FB.user
+      ? '<span class="fnotes">☁ '+esc(FB.user.displayName||'signed in')+(FB.sync?' · <span id="fbstat">'+esc(FB.sync)+'</span>':'')+'</span><button class="chipbtn" id="fbout">sign out</button>'
+      : '<button class="chipbtn" id="fbin">☁ sign in with Google — sync songs everywhere</button>';
+  }
+  h+='</div>';
   if(naming){
     h+='<div class="fctl"><input type="text" id="songname" maxlength="40" placeholder="song name" value="'+esc(naming.prefill||(naming.kind==='rename'?(songs.find(x=>x.id===naming.id)||{}).name||'':''))+'">'
       +'<button class="chipbtn" id="nameok">'+(naming.kind==='rename'?'rename':'save')+'</button><button class="chipbtn" id="namecancel">cancel</button></div>';
@@ -1478,6 +1552,8 @@ vPlay.addEventListener('click',e=>{
     saveSongs(); naming=null; renderPlay(); return;
   }
   if(e.target.closest('#namecancel')){ naming=null; renderPlay(); return; }
+  if(e.target.closest('#fbin')){ fbSignIn(); return; }
+  if(e.target.closest('#fbout')){ if(FB.ready){ try{ FB.m.signOut(FB.auth); }catch(x){} FB.user=null; FB.sync=''; renderPlay(); } return; }
   if(e.target.closest('#slink')){
     const url=songLink(); const btn=e.target.closest('#slink');
     try{ navigator.clipboard.writeText(url).then(()=>{ btn.textContent='copied ✓'; setTimeout(()=>{ btn.textContent='copy song link'; },1500); },()=>{ window.prompt('copy this link:', url); }); }
@@ -1818,6 +1894,7 @@ addEventListener('scroll',()=>tt.classList.toggle('show',scrollY>700),{passive:t
 tt.addEventListener('click',()=>scrollTo({top:0}));
 
 renderProg();
+fbInit();
 key=getJ('fcl-key',{p:9,minor:false});
 const bootR=parseRoute(location.hash);
 if(bootR){
