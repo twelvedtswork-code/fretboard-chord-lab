@@ -508,7 +508,7 @@ const QUALS = [
   ]},
   {id:'7s5', word:'dominant 7 sharp 5 (aug7)', suf:'7♯5', iv:[0,4,8,10], disp:[0,4,8,10], kind:'s', tpl:[
     {f:'E7♯5 form', rs:6, o:[0,null,0,1,1,null]},
-    {f:'A7♯5 form', rs:5, o:[null,0,null,0,2,1]},
+    {f:'A7♯5 form', rs:5, o:[null,0,3,0,2,1]},
   ]},
 ];
 QUALS.forEach(q=>{ if(!q.ivF) q.ivF=q.iv; });
@@ -851,19 +851,19 @@ const cardHTML=(p,q,v,extra,sp)=>{
 /* ================= chords mode ================= */
 const vChords=document.getElementById('v-chords');
 const NEXTS={
-  maj:[[5,'maj','IV'],[7,'maj','V'],[9,'min','vi'],[2,'min','ii'],[7,'d7','V7'],[4,'min','iii']],
-  min:[[8,'maj','VI'],[10,'maj','VII'],[5,'min','iv'],[7,'d7','V7 (harmonic)'],[3,'maj','III'],[7,'min','v']],
-  d7:[[5,'maj','resolves → I'],[5,'min','→ i'],[2,'min','deceptive → vi']],
-  maj7:[[5,'maj7','IV'],[7,'d7','V7'],[9,'m7','vi'],[2,'m7','ii']],
-  m7:[[5,'d7','ii → V'],[10,'maj7','… → the I'],[8,'maj','VI'],[10,'maj','VII']],
-  m7b5:[[5,'d7','ii° → V (minor)'],[10,'min','… → i']],
-  dim:[[1,'maj','resolves up ½ step'],[1,'min','up ½ (minor)']],
-  dim7:[[1,'maj','resolves up ½ step'],[1,'min','up ½ (minor)']],
-  aug:[[5,'maj','V+ → I'],[5,'min','V+ → i'],[0,'maj','settle home']],
-  sus2:[[0,'maj','settle to major'],[0,'min','settle to minor']],
-  sus4:[[0,'maj','release to major'],[0,'min','release to minor']],
-  '7sus4':[[0,'d7','tighten to 7'],[5,'maj','resolve → I'],[5,'min','→ i']],
-  mmaj7:[[0,'m7','line cliché ↓'],[5,'min','iv']],
+  maj:[[5,'maj','IV','warm lift'],[7,'maj','V','builds tension'],[9,'min','vi','turns bittersweet'],[2,'min','ii','soft step away'],[7,'d7','V7','maximum pull home'],[4,'min','iii','wistful drift']],
+  min:[[8,'maj','VI','opens into light'],[10,'maj','VII','anthemic push'],[5,'min','iv','deepens the sorrow'],[7,'d7','V7 (harmonic)','dramatic pull'],[3,'maj','III','hopeful turn'],[7,'min','v','stays in the shadows']],
+  d7:[[5,'maj','resolves → I','feels like coming home'],[5,'min','→ i','lands in the dark'],[2,'min','deceptive → vi','bittersweet sidestep']],
+  maj7:[[5,'maj7','IV','dreamy lift'],[7,'d7','V7','gentle tension'],[9,'m7','vi','melancholy turn'],[2,'m7','ii','smooth jazz step']],
+  m7:[[5,'d7','ii → V','sets up the payoff'],[10,'maj7','… → the I','silky landing'],[8,'maj','VI','brightens the room'],[10,'maj','VII','lifts away']],
+  m7b5:[[5,'d7','ii° → V (minor)','film-noir tension'],[10,'min','… → i','tragic landing']],
+  dim:[[1,'maj','resolves up ½ step','suspense snaps into light'],[1,'min','up ½ (minor)','suspense falls into shadow']],
+  dim7:[[1,'maj','resolves up ½ step','suspense snaps into light'],[1,'min','up ½ (minor)','suspense falls into shadow']],
+  aug:[[5,'maj','V+ → I','dream-sequence resolve'],[5,'min','V+ → i','uneasy landing'],[0,'maj','settle home','exhale']],
+  sus2:[[0,'maj','settle to major','haze clears to bright'],[0,'min','settle to minor','haze clears to grey']],
+  sus4:[[0,'maj','release to major','held breath releases'],[0,'min','release to minor','releases into sorrow']],
+  '7sus4':[[0,'d7','tighten to 7','tension comes into focus'],[5,'maj','resolve → I','satisfying home'],[5,'min','→ i','darker home']],
+  mmaj7:[[0,'m7','line cliché ↓','film-noir descent'],[5,'min','iv','sinks deeper']],
 };
 const NEXT_ALIAS={'9':'d7','13':'d7','7b9':'d7','7s9':'d7','7b5':'d7','7s5':'d7',maj9:'maj7','6':'maj','69':'maj',add9:'maj',m9:'m7',m6:'min',madd9:'min'};
 function renderChords(){
@@ -894,9 +894,9 @@ function renderChords(){
   h+='</div>';
   const nx=NEXTS[q.id]||NEXTS[NEXT_ALIAS[q.id]];
   if(nx){
-    h+='<div class="grp"><h4>What usually comes next <span>· the classic moves from '+chordSym(p,q)+' — tap to go, or build a progression above</span></h4><div class="fam">';
-    for(const [o,qq,why] of nx){
-      h+='<button class="famcard" data-p="'+pc(p+o)+'" data-q="'+qq+'"><span class="rn">'+why+'</span><span class="cs">'+rootBig(pc(p+o))+QBY[qq].suf+'</span></button>';
+    h+='<div class="grp"><h4>What usually comes next <span>· the classic moves from '+chordSym(p,q)+' — moods are tendencies, your ears outrank them</span></h4><div class="fam">';
+    for(const [o,qq,why,mood] of nx){
+      h+='<button class="famcard" data-p="'+pc(p+o)+'" data-q="'+qq+'"><span class="rn">'+why+'</span><span class="cs">'+rootBig(pc(p+o))+QBY[qq].suf+'</span>'+(mood?'<span class="c7">'+mood+'</span>':'')+'</button>';
     }
     h+='</div></div>';
   }
