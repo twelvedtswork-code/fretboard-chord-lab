@@ -294,6 +294,11 @@
   }
   .edrow{display:flex; flex-wrap:wrap; gap:6px; margin:10px 0}
   .edlab{font-size:11px; color:var(--faint); text-transform:uppercase; letter-spacing:.1em; width:100%}
+  .songc{display:inline-flex; gap:3px; align-items:center}
+  .songc.cur .pchip{background:var(--accent); color:var(--accent-ink); border-color:var(--accent)}
+  .cctlb{border:1px solid var(--line); background:var(--surface2); color:var(--muted); border-radius:6px; min-width:24px; height:24px; cursor:pointer; font-size:12px; padding:0 5px; font-family:inherit}
+  .cctlb:hover{border-color:var(--accent); color:var(--text)}
+  input[type="text"]{background:var(--surface2); color:var(--text); border:1px solid var(--line); border-radius:7px; padding:5px 10px; font:inherit; font-size:16px}
 
   footer{max-width:1180px; margin:0 auto; padding:0 14px 70px; color:var(--muted); font-size:13.5px}
   footer .card{background:var(--surface); border:1px solid var(--line); border-radius:10px; padding:14px 18px; box-shadow:var(--shadow)}
@@ -1281,7 +1286,7 @@ vFind.addEventListener('click',e=>{
 let prog=getJ('fcl-prog',[])
   .map(c=> c&&c.t ? c : (c&&QBY[c.q]?{t:'c',p:c.p,q:c.q,v:0}:null))
   .filter(c=>c&&(c.t==='b'||(QBY[c.q]&&c.p>=0&&c.p<12)));
-const saveProg=()=>store.set('fcl-prog',JSON.stringify(prog));
+const saveProg=()=>{ store.set('fcl-prog',JSON.stringify(prog)); autoSaveSong(); };
 function voicingsOf(p,q){ const out=[]; for(const g of DATA[p][q]) for(const it of g.items) out.push({fr:it.frets, label:it.label, grp:g.title}); return out; }
 const chosenV=it=>{ const vs=voicingsOf(it.p,it.q); return vs[Math.min(it.v||0, vs.length-1)]; };
 function renderProg(){
@@ -1321,7 +1326,35 @@ const SCALES=[
   {id:'mixo', n:'Mixolydian',       iv:[0,2,4,5,7,9,10]},
   {id:'hmin', n:'Harmonic minor',   iv:[0,2,3,5,7,8,11]},
 ];
-let playSel=0, sheetIdx=null, editIdx=null, scSel=null;
+let playSel=0, sheetIdx=null, editIdx=null, scSel=null, naming=null;
+/* --- song library (saved on this device) --- */
+let songs=getJ('fcl-songs',[]).filter(s=>s&&s.id&&s.name&&Array.isArray(s.items));
+let curSong=store.get('fcl-cursong')||null;
+const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const saveSongs=()=>{ songs=songs.slice(0,50); store.set('fcl-songs',JSON.stringify(songs)); };
+function autoSaveSong(){
+  if(!curSong) return;
+  const s=songs.find(x=>x.id===curSong);
+  if(s){ s.items=JSON.parse(JSON.stringify(prog)); s.up=Date.now(); saveSongs(); }
+}
+function songLink(){
+  const s=songs.find(x=>x.id===curSong);
+  const payload=JSON.stringify({n:s?s.name:'shared song', i:prog});
+  const b=btoa(unescape(encodeURIComponent(payload))).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'');
+  return location.origin+location.pathname+'#s='+b;
+}
+function importSong(b64){
+  try{
+    const raw=decodeURIComponent(escape(atob(b64.replace(/-/g,'+').replace(/_/g,'/'))));
+    const d=JSON.parse(raw);
+    const items=(Array.isArray(d.i)?d.i:[]).map(c=> c&&c.t==='b' ? {t:'b',label:BRKLABELS.includes(c.label)?c.label:'Break'} : (c&&QBY[c.q]&&c.p>=0&&c.p<12 ? {t:'c',p:+c.p,q:c.q,v:Math.max(0,+c.v||0)} : null)).filter(Boolean);
+    if(!items.length) return;
+    prog=items; curSong=null; store.set('fcl-cursong','');
+    store.set('fcl-prog',JSON.stringify(prog));
+    naming={kind:'new', prefill:String(d.n||'imported song').slice(0,40)};
+    renderProg();
+  }catch(e){}
+}
 const chordPcs=(p,q)=>new Set(QBY[q].ivF.map(x=>pc(p+x)));
 function sectionsOf(){
   const secs=[{label:'Whole song', from:0, to:prog.length}];
@@ -1352,6 +1385,20 @@ function renderPlay(){
   const secs=sectionsOf();
   if(playSel>=secs.length) playSel=0;
   let h='<div class="khead"><h2>Play</h2><span class="qword">your song — reorder it, re-voice it, section it, then find the solo scale</span></div>';
+  const curS=songs.find(x=>x.id===curSong);
+  h+='<div class="grp"><h4>Your songs <span>· saved on this device'+(curS?' — editing “'+esc(curS.name)+'” (auto-saves)':' — working on an unsaved song')+'</span></h4>';
+  if(songs.length){
+    h+='<div class="fam">'+songs.map(s=>'<span class="songc'+(s.id===curSong?' cur':'')+'">'
+      +'<button class="pchip" data-load="'+s.id+'">'+esc(s.name)+'</button>'
+      +'<button class="cctlb" data-ren="'+s.id+'" aria-label="rename">✎</button>'
+      +'<button class="cctlb" data-sdel="'+s.id+'" aria-label="delete">×</button></span>').join('')+'</div>';
+  }
+  h+='<div class="fctl"><button class="chipbtn" id="saveasbtn">save as new song</button><button class="chipbtn" id="newsongbtn">new empty song</button><button class="chipbtn" id="slink">copy song link</button></div>';
+  if(naming){
+    h+='<div class="fctl"><input type="text" id="songname" maxlength="40" placeholder="song name" value="'+esc(naming.prefill||(naming.kind==='rename'?(songs.find(x=>x.id===naming.id)||{}).name||'':''))+'">'
+      +'<button class="chipbtn" id="nameok">'+(naming.kind==='rename'?'rename':'save')+'</button><button class="chipbtn" id="namecancel">cancel</button></div>';
+  }
+  h+='</div>';
   h+='<div class="grp"><h4>The song <span>· drag a card to reorder (hold a moment on touch) · tap a card for voicings · ✎ change the chord · × remove · tap a section name to change it</span></h4>';
   if(!prog.length) h+='<div class="fempty">no chords yet — add below, or tap “+ progression” on any chord page</div>';
   h+='<div class="songrow">';
@@ -1415,6 +1462,28 @@ function renderPlay(){
 }
 vPlay.addEventListener('click',e=>{
   if(dragMoved){ dragMoved=false; return; }   /* swallow the click a finished drag leaves behind */
+  const ld=e.target.closest('[data-load]');
+  if(ld){ const s=songs.find(x=>x.id===ld.dataset.load); if(s){ curSong=s.id; store.set('fcl-cursong',s.id); prog=JSON.parse(JSON.stringify(s.items)); store.set('fcl-prog',JSON.stringify(prog)); playSel=0; naming=null; renderPlay(); renderProg(); } return; }
+  const rn=e.target.closest('[data-ren]');
+  if(rn){ naming={kind:'rename', id:rn.dataset.ren}; renderPlay(); const inp=document.getElementById('songname'); if(inp){ inp.focus(); inp.select(); } return; }
+  const sd=e.target.closest('[data-sdel]');
+  if(sd){ songs=songs.filter(x=>x.id!==sd.dataset.sdel); if(curSong===sd.dataset.sdel){ curSong=null; store.set('fcl-cursong',''); } saveSongs(); renderPlay(); return; }
+  if(e.target.closest('#saveasbtn')){ naming={kind:'new'}; renderPlay(); const inp=document.getElementById('songname'); if(inp) inp.focus(); return; }
+  if(e.target.closest('#newsongbtn')){ curSong=null; store.set('fcl-cursong',''); prog=[]; store.set('fcl-prog','[]'); playSel=0; naming=null; renderPlay(); renderProg(); return; }
+  if(e.target.closest('#nameok')){
+    const inp=document.getElementById('songname'); const nm=(inp&&inp.value.trim().slice(0,40))||'';
+    if(!nm) return;
+    if(naming.kind==='rename'){ const s=songs.find(x=>x.id===naming.id); if(s) s.name=nm; }
+    else { const id=Date.now().toString(36)+Math.floor(Math.random()*999).toString(36); songs.unshift({id, name:nm, items:JSON.parse(JSON.stringify(prog)), up:Date.now()}); curSong=id; store.set('fcl-cursong',id); }
+    saveSongs(); naming=null; renderPlay(); return;
+  }
+  if(e.target.closest('#namecancel')){ naming=null; renderPlay(); return; }
+  if(e.target.closest('#slink')){
+    const url=songLink(); const btn=e.target.closest('#slink');
+    try{ navigator.clipboard.writeText(url).then(()=>{ btn.textContent='copied ✓'; setTimeout(()=>{ btn.textContent='copy song link'; },1500); },()=>{ window.prompt('copy this link:', url); }); }
+    catch(x){ window.prompt('copy this link:', url); }
+    return;
+  }
   const sec=e.target.closest('[data-sec]'); if(sec){ playSel=+sec.dataset.sec; scSel=null; renderPlay(); return; }
   const sp=e.target.closest('.scpick'); if(sp){ const a=sp.dataset.sc.split('|'); scSel={r:+a[0], sid:a[1]}; renderPlay(); return; }
   const ed=e.target.closest('[data-ed]');
@@ -1593,7 +1662,7 @@ document.addEventListener('click',e=>{
     prog.push({t:'c',p:cur.p,q:cur.q,v:0}); if(prog.length>24) prog.shift();
     saveProg(); renderProg(); return;
   }
-  const pch=e.target.closest('.pchip');
+  const pch=e.target.closest('#ptray .pchip');
   if(pch){ prog.splice(+pch.dataset.pi,1); saveProg(); renderProg(); return; }
   if(e.target.closest('#pplay')){ playProg(); return; }
   if(e.target.closest('#popen')){ setMode('play'); return; }
@@ -1658,6 +1727,8 @@ function parseRoute(s){
   if(s==='practice') return {mode:'practice'};
   if(s==='find') return {mode:'find'};
   if(s==='play') return {mode:'play'};
+  const ms=/^s=([A-Za-z0-9_-]+)$/.exec(s);
+  if(ms) return {mode:'play', song:ms[1]};
   let m=/^key-([A-G][bs]?)(-m)?$/.exec(s);
   if(m && UNSLUG[m[1]]!==undefined) return {mode:'keys', p:UNSLUG[m[1]], minor:!!m[2]};
   m=/^([A-G][bs]?)-([a-z0-9]+)$/.exec(s);
@@ -1669,6 +1740,7 @@ addEventListener('hashchange',()=>{
   if(!t) return;
   if(t.mode==='chords'){ if(mode!=='chords'||t.p!==cur.p||t.q!==cur.q){ cur={p:t.p,q:t.q}; setMode('chords',true); store.set('fcl-last',SLUG[cur.p]+'-'+cur.q); } }
   else if(t.mode==='keys'){ if(mode!=='keys'||t.p!==key.p||t.minor!==key.minor){ key={p:t.p,minor:t.minor}; setMode('keys',true); } }
+  else if(t.song){ importSong(t.song); if(mode!=='play') setMode('play',true); else renderPlay(); }
   else if(mode!==t.mode) setMode(t.mode,true);
 });
 const NAT={c:0,d:2,e:4,f:5,g:7,a:9,b:11};
@@ -1751,6 +1823,7 @@ const bootR=parseRoute(location.hash);
 if(bootR){
   if(bootR.mode==='chords') cur={p:bootR.p,q:bootR.q};
   if(bootR.mode==='keys') key={p:bootR.p,minor:bootR.minor};
+  if(bootR.song) importSong(bootR.song);
   setMode(bootR.mode,true);
 } else {
   const last=/^([A-G][bs]?)-([a-z0-9]+)$/.exec(store.get('fcl-last')||'');
