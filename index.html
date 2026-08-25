@@ -1655,7 +1655,14 @@ vPlay.addEventListener('click',e=>{
   if(del){ prog.splice(+del.dataset.del,1); saveProg(); playSel=0; renderPlay(); renderProg(); return; }
   const bl=e.target.closest('[data-blbl]');
   if(bl){ const it=prog[+bl.dataset.blbl]; it.label=BRKLABELS[(BRKLABELS.indexOf(it.label)+1+BRKLABELS.length)%BRKLABELS.length]; saveProg(); renderPlay(); renderProg(); return; }
-  const cp=e.target.closest('[data-ci]'); if(cp){ sheetIdx=+cp.dataset.ci; editIdx=null; renderPlay(); return; }
+  /* pointer capture retargets a card tap's click to the card itself — resolve down to its picker
+     (control-row buttons are excluded: they never capture and have their own handlers) */
+  let cp=e.target.closest('[data-ci]');
+  if(!cp && !e.target.closest('.cctl')){
+    const cardEl=e.target.closest('#v-play .ccard');
+    if(cardEl) cp=cardEl.querySelector('[data-ci]');
+  }
+  if(cp){ sheetIdx=+cp.dataset.ci; editIdx=null; renderPlay(); return; }
   const vs=e.target.closest('[data-vsel]');
   if(vs){ if(sheetIdx!==null&&prog[sheetIdx]) prog[sheetIdx].v=+vs.dataset.vsel; sheetIdx=null; saveProg(); renderPlay(); renderProg(); return; }
   if(e.target.id==='sheetbg'||e.target.closest('#sheetx')){ sheetIdx=null; editIdx=null; renderPlay(); return; }
