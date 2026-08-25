@@ -272,7 +272,8 @@
   .cctl button{border:1px solid var(--line); background:var(--surface2); color:var(--muted); border-radius:6px; min-width:26px; height:24px; cursor:pointer; font-size:13px; padding:0 6px; font-family:inherit}
   .cctl button:hover{border-color:var(--accent); color:var(--text)}
   .cctl .pl{border-radius:50%; width:24px; min-width:24px; padding:0}
-  .brk{display:flex; flex-direction:column; justify-content:center; align-items:center; gap:6px; border:1px dashed var(--accent); border-radius:9px; padding:10px 12px; background:var(--accent-soft)}
+  .brk{flex-basis:100%; display:flex; flex-direction:row; align-items:center; gap:12px; border:1px dashed var(--accent); border-radius:9px; padding:8px 14px; background:var(--accent-soft)}
+  .brk .cctl{margin-left:auto}
   .brklbl{font-family:"Barlow Condensed",sans-serif; font-weight:700; font-size:18px; letter-spacing:.12em; text-transform:uppercase; color:var(--accent); background:none; border:0; cursor:pointer; font-family:"Barlow Condensed",sans-serif}
   .sheetwrap{position:fixed; inset:0; background:rgba(0,0,0,.45); z-index:80; display:flex; align-items:flex-end; justify-content:center}
   .sheet{background:var(--bg); border:1px solid var(--line); border-radius:14px 14px 0 0; max-height:72vh; overflow-y:auto; width:min(920px,100%); padding:14px 16px calc(16px + env(safe-area-inset-bottom))}
@@ -1695,7 +1696,7 @@ function startDrag(i,x,y){
   const g=document.createElement('div'); g.className='dragghost';
   g.textContent='⠿ '+(it.t==='b'?it.label:chordSym(it.p,QBY[it.q]));
   document.body.appendChild(g);
-  drag={i, g, to:null, after:false};
+  drag={i, g, to:null, after:false, sx:x, sy:y, maxD:0};
   const src=vPlay.querySelector('.songrow')?.children[i]; if(src) src.classList.add('dragging');
   g.style.left=(x+10)+'px'; g.style.top=(y-14)+'px';
 }
@@ -1713,13 +1714,14 @@ vPlay.addEventListener('pointerdown',e=>{
 vPlay.addEventListener('pointermove',e=>{
   if(drag){
     e.preventDefault();
+    drag.maxD=Math.max(drag.maxD, Math.hypot(e.clientX-drag.sx, e.clientY-drag.sy));
     drag.g.style.left=(e.clientX+10)+'px'; drag.g.style.top=(e.clientY-14)+'px';
     dragMark(e); return;
   }
   if(!dragPend) return;
   const d=Math.hypot(e.clientX-dragPend.x, e.clientY-dragPend.y);
   if(dragPend.touch){ if(d>12) pendClear(); }               /* moved early on touch = a scroll, not a drag */
-  else if(d>6){ const i=dragPend.i; pendClear(); startDrag(i, e.clientX, e.clientY); }
+  else if(d>8){ const i=dragPend.i; pendClear(); startDrag(i, e.clientX, e.clientY); }
 });
 vPlay.addEventListener('touchmove',e=>{ if(drag) e.preventDefault(); },{passive:false});
 vPlay.addEventListener('contextmenu',e=>{ if(drag||dragPend) e.preventDefault(); });
@@ -1733,8 +1735,9 @@ function dragEnd(commit){
     prog.splice(to,0,it);
     saveProg(); renderProg();
   }
+  const wasRealDrag = drag.to!==null || drag.maxD>14;
   dragMarksClear(); drag.g.remove(); drag=null;
-  if(commit){ dragMoved=true; setTimeout(()=>{ dragMoved=false; },350); }  /* swallow the drag's own click, then self-expire */
+  if(commit && wasRealDrag){ dragMoved=true; setTimeout(()=>{ dragMoved=false; },350); }  /* swallow a real drag's click; a drifted click passes through */
   renderPlay();
 }
 vPlay.addEventListener('pointerup',()=>dragEnd(true));
