@@ -1435,18 +1435,58 @@ function songLink(){
   const b=btoa(unescape(encodeURIComponent(payload))).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'');
   return location.origin+location.pathname+'#s='+b;
 }
+function importSongData(d){
+  const items=(Array.isArray(d&&d.i)?d.i:[]).map(c=> c&&c.t==='b' ? {t:'b',label:BRKLABELS.includes(c.label)?c.label:'Break'} : (c&&QBY[c.q]&&c.p>=0&&c.p<12 ? {t:'c',p:+c.p,q:c.q,v:Math.max(0,+c.v||0)} : null)).filter(Boolean);
+  if(!items.length) return false;
+  prog=items; curSong=null; store.set('fcl-cursong','');
+  store.set('fcl-prog',JSON.stringify(prog));
+  naming={kind:'new', prefill:String((d&&d.n)||'imported song').slice(0,40)};
+  renderProg();
+  return true;
+}
 function importSong(b64){
   try{
     const raw=decodeURIComponent(escape(atob(b64.replace(/-/g,'+').replace(/_/g,'/'))));
-    const d=JSON.parse(raw);
-    const items=(Array.isArray(d.i)?d.i:[]).map(c=> c&&c.t==='b' ? {t:'b',label:BRKLABELS.includes(c.label)?c.label:'Break'} : (c&&QBY[c.q]&&c.p>=0&&c.p<12 ? {t:'c',p:+c.p,q:c.q,v:Math.max(0,+c.v||0)} : null)).filter(Boolean);
-    if(!items.length) return;
-    prog=items; curSong=null; store.set('fcl-cursong','');
-    store.set('fcl-prog',JSON.stringify(prog));
-    naming={kind:'new', prefill:String(d.n||'imported song').slice(0,40)};
-    renderProg();
-  }catch(e){}
+    return importSongData(JSON.parse(raw));
+  }catch(e){ return false; }
 }
+function importFileText(text){
+  try{ if(importSongData(JSON.parse(text))) return true; }catch(e){}
+  const m=/#s=([A-Za-z0-9_-]+)/.exec(text);
+  if(m) return importSong(m[1]);
+  const t=String(text).trim().replace(/\s+/g,'');
+  if(/^[A-Za-z0-9_-]{20,}$/.test(t)) return importSong(t);
+  return false;
+}
+function downloadSongFile(){
+  const s=songs.find(x=>x.id===curSong);
+  const payload={n:s?s.name:'untitled song', i:prog};
+  const txt=JSON.stringify(payload,null,1);
+  const a=document.createElement('a');
+  const url=URL.createObjectURL(new Blob([txt],{type:'application/json'}));
+  a.href=url;
+  a.download=(payload.n.toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-+|-+$/g,'')||'song')+'.chordlab.json';
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(()=>URL.revokeObjectURL(url),4000);
+}
+const songFileIn=document.createElement('input');
+songFileIn.type='file';
+songFileIn.accept='.json,.chordlab,.txt,application/json,text/plain';
+songFileIn.hidden=true;
+document.body.appendChild(songFileIn);
+songFileIn.addEventListener('change',()=>{
+  const f=songFileIn.files&&songFileIn.files[0]; if(!f) return;
+  const rd=new FileReader();
+  rd.onload=()=>{
+    const ok=importFileText(String(rd.result||''));
+    importing=!ok;
+    importErr=ok?'':'that file didn’t contain a song I recognize';
+    if(ok) playSel=0;
+    renderPlay();
+  };
+  rd.readAsText(f);
+  songFileIn.value='';
+});
 const chordPcs=(p,q)=>new Set(QBY[q].ivF.map(x=>pc(p+x)));
 function sectionsOf(){
   const secs=[{label:'Whole song', from:0, to:prog.length}];
@@ -1485,7 +1525,7 @@ function renderPlay(){
       +'<button class="cctlb" data-ren="'+s.id+'" aria-label="rename">✎</button>'
       +'<button class="cctlb" data-sdel="'+s.id+'" aria-label="delete">×</button></span>').join('')+'</div>';
   }
-  h+='<div class="fctl"><button class="chipbtn" id="saveasbtn">save as new song</button><button class="chipbtn" id="newsongbtn">new empty song</button><button class="chipbtn" id="slink">copy song link</button><button class="chipbtn" id="simport">import song</button>';
+  h+='<div class="fctl"><button class="chipbtn" id="saveasbtn">save as new song</button><button class="chipbtn" id="newsongbtn">new empty song</button><button class="chipbtn" id="slink">copy song link</button><button class="chipbtn" id="sfile">download song file</button><button class="chipbtn" id="simport">import song</button>';
   if(FB.ready){
     h+= FB.user
       ? '<span class="fnotes">☁ '+esc(FB.user.displayName||'signed in')+(FB.sync?' · <span id="fbstat">'+esc(FB.sync)+'</span>':'')+'</span><button class="chipbtn" id="fbout">sign out</button>'
@@ -1498,7 +1538,7 @@ function renderPlay(){
   }
   if(importing){
     h+='<div class="fctl"><input type="text" id="importbox" placeholder="paste a song link (or just its code) here" style="flex:1 1 260px">'
-      +'<button class="chipbtn" id="importok">load</button><button class="chipbtn" id="importcancel">cancel</button>'
+      +'<button class="chipbtn" id="importok">load</button><button class="chipbtn" id="importfile">…or upload a file</button><button class="chipbtn" id="importcancel">cancel</button>'
       +(importErr?'<span class="fnotes" style="color:var(--accent)">'+esc(importErr)+'</span>':'')+'</div>';
   }
   h+='</div>';
@@ -1585,14 +1625,13 @@ vPlay.addEventListener('click',e=>{
   if(e.target.closest('#importcancel')){ importing=false; importErr=''; renderPlay(); return; }
   if(e.target.closest('#importok')){
     const raw=(document.getElementById('importbox')||{}).value||'';
-    const m=/#s=([A-Za-z0-9_-]+)/.exec(raw);
-    const code=m?m[1]:(/^[A-Za-z0-9_\-\s]+$/.test(raw.trim())?raw.replace(/\s+/g,''):'');
     naming=null;
-    if(code) importSong(code);
-    if(naming){ importing=false; importErr=''; playSel=0; }
+    if(importFileText(raw)){ importing=false; importErr=''; playSel=0; }
     else importErr='couldn’t read that — paste the whole link, or just the code after #s=';
     renderPlay(); return;
   }
+  if(e.target.closest('#importfile')){ songFileIn.click(); return; }
+  if(e.target.closest('#sfile')){ downloadSongFile(); return; }
   if(e.target.closest('#fbin')){ fbSignIn(); return; }
   if(e.target.closest('#fbout')){ if(FB.ready){ try{ FB.m.signOut(FB.auth); }catch(x){} FB.user=null; FB.sync=''; store.set('fcl-authed',''); store.set('fcl-guest',''); renderPlay(); gateShow(); } return; }
   if(e.target.closest('#slink')){
