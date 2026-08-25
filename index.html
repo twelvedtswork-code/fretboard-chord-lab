@@ -1348,7 +1348,7 @@ const SCALES=[
   {id:'mixo', n:'Mixolydian',       iv:[0,2,4,5,7,9,10]},
   {id:'hmin', n:'Harmonic minor',   iv:[0,2,3,5,7,8,11]},
 ];
-let playSel=0, sheetIdx=null, editIdx=null, scSel=null, naming=null;
+let playSel=0, sheetIdx=null, editIdx=null, scSel=null, naming=null, importing=false, importErr='';
 /* --- cloud sync (Firebase — activates only where the SDK can load; everywhere else stays local-only) --- */
 const FBCFG={
   apiKey:"AIzaSyDeTa0Gu9mn22Ix--WCwj8LVGxYfgc46NE",
@@ -1485,7 +1485,7 @@ function renderPlay(){
       +'<button class="cctlb" data-ren="'+s.id+'" aria-label="rename">✎</button>'
       +'<button class="cctlb" data-sdel="'+s.id+'" aria-label="delete">×</button></span>').join('')+'</div>';
   }
-  h+='<div class="fctl"><button class="chipbtn" id="saveasbtn">save as new song</button><button class="chipbtn" id="newsongbtn">new empty song</button><button class="chipbtn" id="slink">copy song link</button>';
+  h+='<div class="fctl"><button class="chipbtn" id="saveasbtn">save as new song</button><button class="chipbtn" id="newsongbtn">new empty song</button><button class="chipbtn" id="slink">copy song link</button><button class="chipbtn" id="simport">import song</button>';
   if(FB.ready){
     h+= FB.user
       ? '<span class="fnotes">☁ '+esc(FB.user.displayName||'signed in')+(FB.sync?' · <span id="fbstat">'+esc(FB.sync)+'</span>':'')+'</span><button class="chipbtn" id="fbout">sign out</button>'
@@ -1495,6 +1495,11 @@ function renderPlay(){
   if(naming){
     h+='<div class="fctl"><input type="text" id="songname" maxlength="40" placeholder="song name" value="'+esc(naming.prefill||(naming.kind==='rename'?(songs.find(x=>x.id===naming.id)||{}).name||'':''))+'">'
       +'<button class="chipbtn" id="nameok">'+(naming.kind==='rename'?'rename':'save')+'</button><button class="chipbtn" id="namecancel">cancel</button></div>';
+  }
+  if(importing){
+    h+='<div class="fctl"><input type="text" id="importbox" placeholder="paste a song link (or just its code) here" style="flex:1 1 260px">'
+      +'<button class="chipbtn" id="importok">load</button><button class="chipbtn" id="importcancel">cancel</button>'
+      +(importErr?'<span class="fnotes" style="color:var(--accent)">'+esc(importErr)+'</span>':'')+'</div>';
   }
   h+='</div>';
   h+='<div class="grp"><h4>The song <span>· drag a card to reorder (hold a moment on touch) · tap a card for voicings · ✎ change the chord · × remove · tap a section name to change it</span></h4>';
@@ -1576,6 +1581,18 @@ vPlay.addEventListener('click',e=>{
     saveSongs(); naming=null; renderPlay(); return;
   }
   if(e.target.closest('#namecancel')){ naming=null; renderPlay(); return; }
+  if(e.target.closest('#simport')){ importing=true; importErr=''; renderPlay(); const b=document.getElementById('importbox'); if(b) b.focus(); return; }
+  if(e.target.closest('#importcancel')){ importing=false; importErr=''; renderPlay(); return; }
+  if(e.target.closest('#importok')){
+    const raw=(document.getElementById('importbox')||{}).value||'';
+    const m=/#s=([A-Za-z0-9_-]+)/.exec(raw);
+    const code=m?m[1]:(/^[A-Za-z0-9_\-\s]+$/.test(raw.trim())?raw.replace(/\s+/g,''):'');
+    naming=null;
+    if(code) importSong(code);
+    if(naming){ importing=false; importErr=''; playSel=0; }
+    else importErr='couldn’t read that — paste the whole link, or just the code after #s=';
+    renderPlay(); return;
+  }
   if(e.target.closest('#fbin')){ fbSignIn(); return; }
   if(e.target.closest('#fbout')){ if(FB.ready){ try{ FB.m.signOut(FB.auth); }catch(x){} FB.user=null; FB.sync=''; store.set('fcl-authed',''); store.set('fcl-guest',''); renderPlay(); gateShow(); } return; }
   if(e.target.closest('#slink')){
